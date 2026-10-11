@@ -19,6 +19,9 @@ import type {
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
 export class PragmaticClient
 {
+    private static readonly AuthorizationHeader = 'Authorization'
+    private static readonly BearerPrefix = 'Bearer '
+
     private readonly connection: MessageConnection
     private readonly socket: IMessageSocket
 
@@ -35,9 +38,12 @@ export class PragmaticClient
         return new PragmaticClient(connection, socket)
     }
 
-    public static async ConnectAsync(url: string): Promise<PragmaticClient>
+    public static async ConnectAsync(url: string, options: { bearerToken?: string } = {}): Promise<PragmaticClient>
     {
-        const ws = new WebSocket(url)
+        const socketOptions = options.bearerToken === undefined
+            ? undefined
+            : { headers: { [PragmaticClient.AuthorizationHeader]: PragmaticClient.BearerPrefix + options.bearerToken } }
+        const ws = new WebSocket(url, socketOptions)
         await new Promise<void>((resolve, reject) =>
         {
             const onOpen = () =>
