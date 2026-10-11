@@ -11,8 +11,9 @@ import { WebSocketMessageWriter } from '../transport/web-socket-message-writer.j
 import { WsMessageSocket } from '../transport/ws-message-socket.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
+import { ModelProtocol } from '../contracts/model-protocol.js'
 import type {
-    ActiveSolutionSummary, PublishDiagnosticsParams, RenameErrorDto, SolutionGraphChangePayload,
+    ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
 } from '../dto/wire-dtos.js'
 
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
@@ -134,6 +135,16 @@ export class PragmaticClient
     public DiagnosticsFor(uri: string): Promise<Diagnostic[]>
     {
         return this.connection.sendRequest(LanguageProtocol.DiagnosticsFor, { uri })
+    }
+
+    public ModelView(memberId: string): Promise<ModelProjection>
+    {
+        return this.connection.sendRequest(ModelProtocol.ModelView, { memberId })
+    }
+
+    public Resources(nodeId: string): Promise<ResolvedResourceDto[]>
+    {
+        return this.connection.sendRequest(ModelProtocol.Resources, { nodeId })
     }
 
     public DidChange(uri: string, text: string): void
