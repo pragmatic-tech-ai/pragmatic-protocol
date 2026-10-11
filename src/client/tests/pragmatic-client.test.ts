@@ -29,9 +29,13 @@ test('client receives a diagnostics push notification', async () =>
     server.listen()
     const client = PragmaticClient.CreateOverSocket(clientSocket)
     const received: string[] = []
-    client.OnDiagnostics(params => received.push(params.uri))
+    const arrived = new Promise<void>(resolve => client.OnDiagnostics(params =>
+    {
+        received.push(params.uri)
+        resolve()
+    }))
     await server.sendNotification(LanguageProtocol.PublishDiagnostics, { uri: 'file:///a.todl', diagnostics: [] })
-    await new Promise(resolve => setImmediate(resolve))
+    await arrived
     assert.deepEqual(received, ['file:///a.todl'])
     await client.DisposeAsync()
     server.dispose()
