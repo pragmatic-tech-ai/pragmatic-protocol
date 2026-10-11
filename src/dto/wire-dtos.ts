@@ -76,3 +76,32 @@ export interface SolutionGraphChangePayload
     memberIds: string[]
     fileIds: string[]
 }
+
+export interface ModelViewParams
+{
+    memberId: string
+}
+
+export interface ResourcesParams
+{
+    nodeId: string
+}
+
+export interface ModelMemberDto
+{
+    id: string
+    kind: string | null
+}
+
+export interface ModelProjection
+{
+    members: ModelMemberDto[]
+    provenanceOf: Record<string, string>
+}
+
+export interface ResolvedResourceDto
+{
+    annotation: string
+    path: string
+    storageRoot: string
+}

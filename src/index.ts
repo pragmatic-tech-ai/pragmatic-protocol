@@ -1,6 +1,7 @@
 export * from './dto/wire-dtos.js'
 export { LanguageProtocol } from './contracts/language-protocol.js'
 export { SolutionProtocol } from './contracts/solution-protocol.js'
+export { ModelProtocol } from './contracts/model-protocol.js'
 export type { IMessageSocket } from './transport/message-socket.js'
 export { InMemoryMessageSocket } from './transport/in-memory-message-socket.js'
 export { WebSocketMessageReader } from './transport/web-socket-message-reader.js'
