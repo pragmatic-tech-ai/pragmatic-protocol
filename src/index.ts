@@ -8,5 +8,5 @@ export { WebSocketMessageReader } from './transport/web-socket-message-reader.js
 export { WebSocketMessageWriter } from './transport/web-socket-message-writer.js'
 export { WsMessageSocket } from './transport/ws-message-socket.js'
 export { PragmaticClient } from './client/pragmatic-client.js'
-export { createMessageConnection, NullLogger } from 'vscode-jsonrpc'
-export type { MessageConnection, Disposable } from 'vscode-jsonrpc'
+export { createMessageConnection, NullLogger, ResponseError, ErrorCodes } from 'vscode-jsonrpc'
+export type { MessageConnection, Disposable, RequestType, NotificationType } from 'vscode-jsonrpc'
