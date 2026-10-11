@@ -32,3 +32,14 @@ test('a malformed frame surfaces as onError, not a throw', async () =>
     ;(a as unknown as { messageHandler?: (json: string) => void }).messageHandler?.('not json{')
     assert.equal(errored, true)
 })
+
+test('write rejects and fires onError when the socket is closed', async () =>
+{
+    const [a] = InMemoryMessageSocket.Pair()
+    const writer = new WebSocketMessageWriter(a)
+    let errored = false
+    writer.onError(() => { errored = true })
+    a.Close()
+    await assert.rejects(writer.write({ jsonrpc: '2.0', method: 'x' }))
+    assert.equal(errored, true)
+})
