@@ -1,3 +1,5 @@
 export * from './dto/wire-dtos.js'
 export { LanguageProtocol } from './contracts/language-protocol.js'
 export { SolutionProtocol } from './contracts/solution-protocol.js'
+export type { IMessageSocket } from './transport/message-socket.js'
+export { InMemoryMessageSocket } from './transport/in-memory-message-socket.js'
