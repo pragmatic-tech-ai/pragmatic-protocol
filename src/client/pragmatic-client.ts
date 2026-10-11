@@ -39,8 +39,19 @@ export class PragmaticClient
         const ws = new WebSocket(url)
         await new Promise<void>((resolve, reject) =>
         {
-            ws.once('open', () => resolve())
-            ws.once('error', reject)
+            const onOpen = () =>
+            {
+                ws.off('error', onError)
+                resolve()
+            }
+            const onError = (error: Error) =>
+            {
+                ws.off('open', onOpen)
+                ws.close()
+                reject(error)
+            }
+            ws.once('open', onOpen)
+            ws.once('error', onError)
         })
         return PragmaticClient.CreateOverSocket(new WsMessageSocket(ws))
     }
