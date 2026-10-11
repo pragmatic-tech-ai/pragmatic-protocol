@@ -50,6 +50,7 @@ test('send rejects when the socket is not open', async () =>
     fake.readyState = WebSocket.CONNECTING
     const socket = new WsMessageSocket(fake as unknown as WebSocket)
     await assert.rejects(socket.Send('x'))
+    assert.equal(fake.lastSent, undefined)
 })
 
 test('send forwards the text when the socket is open', async () =>
@@ -58,4 +59,14 @@ test('send forwards the text when the socket is open', async () =>
     const socket = new WsMessageSocket(fake as unknown as WebSocket)
     await socket.Send('payload')
     assert.equal(fake.lastSent, 'payload')
+})
+
+test('passes a string frame through unchanged', () =>
+{
+    const fake = new FakeWs()
+    const socket = new WsMessageSocket(fake as unknown as WebSocket)
+    const seen: string[] = []
+    socket.OnMessage(json => seen.push(json))
+    fake.Deliver('hello')
+    assert.deepEqual(seen, ['hello'])
 })
