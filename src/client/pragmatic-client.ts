@@ -138,7 +138,7 @@ export class PragmaticClient
 
     public DidChange(uri: string, text: string): void
     {
-        void this.connection.sendNotification(LanguageProtocol.DidChange, { uri, text })
+        this.connection.sendNotification(LanguageProtocol.DidChange, { uri, text }).catch(() => {})
     }
 
     public OnGraphChanged(handler: (change: SolutionGraphChangePayload) => void): Disposable
