@@ -105,3 +105,85 @@ export interface ResolvedResourceDto
     path: string
     storageRoot: string
 }
+
+export interface ConnectorInfoDto
+{
+    name: string
+    kind: string
+}
+
+export interface BindingDto
+{
+    concept: string
+    connector: string
+    source: string
+    writable: boolean
+}
+
+export interface ConnectorModelDto
+{
+    modelId: string
+    connectors: ConnectorInfoDto[]
+    bindings: BindingDto[]
+}
+
+export interface ConnectionProbeDto
+{
+    ok: boolean
+    detail?: string
+}
+
+export interface ConnectorTestParams
+{
+    modelId: string
+    connectorName: string
+}
+
+export interface ConnectorPrepareParams
+{
+    modelId: string
+}
+
+export interface ConnectorReadParams
+{
+    modelId: string
+    concept: string
+}
+
+export interface ConnectorWriteBackParams
+{
+    modelId: string
+    dirty: string[]
+    deleted: string[]
+}
+
+export interface EntityDto
+{
+    id: string
+    concept: string
+    fields: Record<string, string | number | boolean | null>
+}
+
+export interface WriteConflictDto
+{
+    key: string | number | boolean | null
+    reason: string
+}
+
+export interface WriteResultDto
+{
+    applied: number
+    conflicts: WriteConflictDto[]
+}
+
+export interface DiagnosticDto
+{
+    code: string
+    message: string
+}
+
+export interface FlushOutcomeDto
+{
+    results: WriteResultDto[]
+    diagnostics: DiagnosticDto[]
+}

@@ -12,8 +12,10 @@ import { WsMessageSocket } from '../transport/ws-message-socket.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
 import { ModelProtocol } from '../contracts/model-protocol.js'
+import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import type {
     ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
+    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto,
 } from '../dto/wire-dtos.js'
 
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
@@ -166,6 +168,36 @@ export class PragmaticClient
     public OnDiagnostics(handler: (params: PublishDiagnosticsParams) => void): Disposable
     {
         return this.connection.onNotification(LanguageProtocol.PublishDiagnostics, handler)
+    }
+
+    public Connectors(): Promise<ConnectorModelDto[]>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.List)
+    }
+
+    public PrepareConnectors(modelId: string): Promise<void>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.Prepare, { modelId })
+    }
+
+    public RefreshConnectors(): Promise<void>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.Refresh)
+    }
+
+    public ReadEntities(modelId: string, concept: string): Promise<EntityDto[]>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.Read, { modelId, concept })
+    }
+
+    public WriteBack(modelId: string, dirty: string[], deleted: string[]): Promise<FlushOutcomeDto>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.WriteBack, { modelId, dirty, deleted })
+    }
+
+    public TestConnection(modelId: string, connectorName: string): Promise<ConnectionProbeDto>
+    {
+        return this.connection.sendRequest(ConnectorProtocol.Test, { modelId, connectorName })
     }
 
     public async DisposeAsync(): Promise<void>
