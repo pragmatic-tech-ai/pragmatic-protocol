@@ -222,3 +222,52 @@ export interface AdminAckDto
 {
     ok: true
 }
+
+export interface AccountDto
+{
+    principalId: string
+    email: string
+    disabled: boolean
+}
+
+export interface CreateAccountParams
+{
+    email: string
+    principalId: string
+    password: string
+}
+
+export interface DisableAccountParams
+{
+    principalId: string
+}
+
+export interface ServiceTokenSummaryDto
+{
+    tokenRef: string
+    principalId: string
+    scopes: string[]
+    expiresAt: string | null
+    revoked: boolean
+}
+
+export interface IssueTokenParams
+{
+    principalId: string
+    scopes: string[]
+    expiresInSeconds: number | null
+}
+
+export interface TokenIssuedDto
+{
+    tokenRef: string
+    token: string
+    principalId: string
+    scopes: string[]
+    expiresAt: string | null
+}
+
+export interface RevokeTokenParams
+{
+    tokenRef: string
+}
