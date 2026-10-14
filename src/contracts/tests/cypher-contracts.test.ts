@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { CypherNodeCellDto, CypherQueryResultDto } from '../../dto/wire-dtos.js'
+import { CypherProtocol } from '../cypher-protocol.js'
 
 class CypherContractFixtures
 {
@@ -15,15 +16,12 @@ class CypherContractFixtures
 
     public static Result(): CypherQueryResultDto
     {
-        const node: CypherNodeCellDto =
-        {
+        const node: CypherNodeCellDto = {
             id: CypherContractFixtures.NodeId,
             concept: CypherContractFixtures.Concept,
             label: CypherContractFixtures.Label,
-            fields:
-            {
-                [CypherContractFixtures.FieldName]:
-                {
+            fields: {
+                [CypherContractFixtures.FieldName]: {
                     value: null,
                     definitionOrigin: CypherContractFixtures.Origin,
                     valueOrigin: CypherContractFixtures.Origin
@@ -43,4 +41,9 @@ test('cypher query result with node cells survives a JSON round trip', () =>
 {
     const result = CypherContractFixtures.Result()
     assert.deepEqual(JSON.parse(JSON.stringify(result)), result)
+})
+
+test('cypher contract carries its wire method name', () =>
+{
+    assert.equal(CypherProtocol.Query.method, 'cypher/query')
 })
