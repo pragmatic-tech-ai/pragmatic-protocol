@@ -271,3 +271,40 @@ export interface RevokeTokenParams
 {
     tokenRef: string
 }
+
+export type CypherParamValue = string | number | boolean | null | CypherParamValue[] | { [k: string]: CypherParamValue }
+
+export interface CypherQueryParams
+{
+    cypher: string
+    parameters?: { [k: string]: CypherParamValue }
+}
+
+export interface CypherFieldSnapshotDto
+{
+    value: string | number | boolean | null
+    definitionOrigin: string
+    valueOrigin: string
+}
+
+// Mirrors TODL MirrorSnapshot (structural copy; no TODL dependency).
+export interface CypherNodeCellDto
+{
+    id: string
+    concept: string
+    class?: string
+    label: string
+    fields: { [name: string]: CypherFieldSnapshotDto }
+    refs: { [name: string]: string[] }
+    iconKey?: string
+}
+
+// Mirrors CypherValueDto. The node member precedes the generic-object member.
+export type CypherCellDto = string | number | boolean | null | CypherNodeCellDto | CypherCellDto[] | { [k: string]: CypherCellDto }
+
+export interface CypherQueryResultDto
+{
+    columns: string[]
+    rows: CypherCellDto[][]
+    truncated: boolean
+}
