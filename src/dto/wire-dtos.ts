@@ -308,3 +308,14 @@ export interface CypherQueryResultDto
     rows: CypherCellDto[][]
     truncated: boolean
 }
+
+export interface PragmaticAppSummaryDto
+{
+    name: string
+    version: string
+}
+
+export interface OpenPragmaticAppParams
+{
+    name: string
+}
