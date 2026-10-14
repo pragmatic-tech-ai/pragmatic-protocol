@@ -187,3 +187,38 @@ export interface FlushOutcomeDto
     results: WriteResultDto[]
     diagnostics: DiagnosticDto[]
 }
+
+export interface GrantDto
+{
+    subject: string
+    role: string
+    resourceKind: string
+    resourcePath: string[]
+}
+
+export interface GrantMutationDto
+{
+    subject: string
+    role: string
+    resourceKind?: string
+    resourcePath?: string[]
+}
+
+export interface ListGrantsParams
+{
+    subject: string
+}
+
+export interface IdentityConfigDto
+{
+    packId: string
+    delegationDepth: string
+    providerSettings: Record<string, string>
+    groupRoleMap: Record<string, string>
+    claimsMapping: Record<string, string>
+}
+
+export interface AdminAckDto
+{
+    ok: true
+}
