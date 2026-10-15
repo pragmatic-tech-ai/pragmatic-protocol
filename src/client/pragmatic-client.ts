@@ -16,10 +16,11 @@ import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
 import { AppDataProtocol } from '../contracts/app-data-protocol.js'
+import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import type {
     ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryResultDto, PragmaticAppSummaryDto,
-    AppWriteParams, AppWriteResultDto,
+    AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
 } from '../dto/wire-dtos.js'
 
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
@@ -197,6 +198,21 @@ export class PragmaticClient
     public WriteAppData(params: AppWriteParams): Promise<AppWriteResultDto>
     {
         return this.connection.sendRequest(AppDataProtocol.Write, params)
+    }
+
+    public ShareRecord(params: ShareParams): Promise<ShareResultDto>
+    {
+        return this.connection.sendRequest(DataSharingProtocol.Share, params)
+    }
+
+    public UnshareRecord(params: UnshareParams): Promise<UnshareResultDto>
+    {
+        return this.connection.sendRequest(DataSharingProtocol.Unshare, params)
+    }
+
+    public ListRecordShares(params: ListSharesParams): Promise<ListSharesResultDto>
+    {
+        return this.connection.sendRequest(DataSharingProtocol.ListShares, params)
     }
 
     public PrepareConnectors(modelId: string): Promise<void>

@@ -359,3 +359,69 @@ export interface AppWriteResultDto
 {
     results: AppWriteOpResultDto[]
 }
+
+export enum ShareSubjectKind
+{
+    Principal = 'principal',
+    Team = 'team',
+}
+
+export enum ShareStatus
+{
+    Applied = 'applied',
+    Denied = 'denied',
+    Invalid = 'invalid',
+    NotFound = 'not-found',
+}
+
+export interface ShareSubjectDto
+{
+    kind: ShareSubjectKind
+    id: string
+}
+
+export interface ShareGrantDto
+{
+    concept: string
+    recordId: string
+    subject: ShareSubjectDto
+    rights: string[]
+}
+
+export interface ShareParams
+{
+    concept: string
+    id: string
+    subject: ShareSubjectDto
+    rights: string[]
+}
+
+export interface ShareResultDto
+{
+    status: ShareStatus
+    reason?: string
+}
+
+export interface UnshareParams
+{
+    concept: string
+    id: string
+    subject: ShareSubjectDto
+}
+
+export interface UnshareResultDto
+{
+    status: ShareStatus
+    reason?: string
+}
+
+export interface ListSharesParams
+{
+    concept: string
+    id: string
+}
+
+export interface ListSharesResultDto
+{
+    grants: ShareGrantDto[]
+}
