@@ -319,3 +319,43 @@ export interface OpenPragmaticAppParams
 {
     name: string
 }
+
+export enum AppWriteOpKind
+{
+    Create = 'create',
+    Update = 'update',
+    Delete = 'delete',
+}
+
+export enum AppWriteStatus
+{
+    Applied = 'applied',
+    Conflict = 'conflict',
+    Denied = 'denied',
+    Invalid = 'invalid',
+}
+
+export interface AppWriteOpDto
+{
+    op: AppWriteOpKind
+    concept: string
+    id?: string
+    fields?: Record<string, unknown>
+}
+
+export interface AppWriteParams
+{
+    operations: AppWriteOpDto[]
+}
+
+export interface AppWriteOpResultDto
+{
+    status: AppWriteStatus
+    id?: string
+    reason?: string
+}
+
+export interface AppWriteResultDto
+{
+    results: AppWriteOpResultDto[]
+}

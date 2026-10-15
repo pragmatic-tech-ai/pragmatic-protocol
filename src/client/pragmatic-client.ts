@@ -15,9 +15,11 @@ import { ModelProtocol } from '../contracts/model-protocol.js'
 import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
+import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import type {
     ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryResultDto, PragmaticAppSummaryDto,
+    AppWriteParams, AppWriteResultDto,
 } from '../dto/wire-dtos.js'
 
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
@@ -190,6 +192,11 @@ export class PragmaticClient
     public OpenApplication(name: string): Promise<PragmaticAppSummaryDto>
     {
         return this.connection.sendRequest(PragmaticAppProtocol.Open, { name })
+    }
+
+    public WriteAppData(params: AppWriteParams): Promise<AppWriteResultDto>
+    {
+        return this.connection.sendRequest(AppDataProtocol.Write, params)
     }
 
     public PrepareConnectors(modelId: string): Promise<void>
