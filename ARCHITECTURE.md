@@ -29,6 +29,10 @@ src/
 | `ConnectorProtocol` | `connector-protocol.ts:6` | `connector/{list(0),prepare,refresh(0),read,writeBack,test}` |
 | `AdminProtocol` | `admin-protocol.ts:5` | `admin/grants/{list,grant,revoke}`, `admin/config/{get(0),set}`, `admin/accounts/{list(0),create,disable}`, `admin/tokens/{list(0),issue,revoke}` |
 | `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryResultDto, void>` (:9); method hoisted to `QueryMethod` (:7) |
+| `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
+| `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
+| `DataSharingProtocol` | `data-sharing-protocol.ts:5` | `data/share`, `data/unshare`, `data/shares/list` (SP-5 record sharing; `ShareSubjectKind`, share grant DTOs) |
+| `DataAssignmentProtocol` | `data-assignment-protocol.ts:5` | `data/assign` → `AssignParams` `{ concept, id, owner: AssignOwnerDto, owningBu? }` → `AssignResultDto` `{ status: AssignStatus, reason? }`; `AssignStatus` = Applied / Denied / Invalid / NotFound / Unsupported |
 
 ## Wire DTOs (`src/dto/wire-dtos.ts`, ~311 lines, all camelCase)
 
@@ -61,7 +65,7 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
 
 ## Barrel (`src/index.ts`)
 
-`export *` DTOs (:1); the six protocol classes (:2-7); transport (:8-12); `PragmaticClient` (:13); vscode-jsonrpc runtime values + types (:14-15, the shared-instance seam).
+`export *` DTOs (:1); the ten protocol classes (:2-10; incl. `PragmaticAppProtocol`, `AppDataProtocol`, `DataSharingProtocol`, `DataAssignmentProtocol`); transport (:8-12); `PragmaticClient` (:13); vscode-jsonrpc runtime values + types (:14-15, the shared-instance seam).
 
 ## Tests + build
 
