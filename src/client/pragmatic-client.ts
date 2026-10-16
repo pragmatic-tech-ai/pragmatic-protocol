@@ -17,10 +17,12 @@ import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
 import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
+import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
 import type {
     ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryResultDto, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
+    AssignParams, AssignResultDto,
 } from '../dto/wire-dtos.js'
 
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
@@ -213,6 +215,11 @@ export class PragmaticClient
     public ListRecordShares(params: ListSharesParams): Promise<ListSharesResultDto>
     {
         return this.connection.sendRequest(DataSharingProtocol.ListShares, params)
+    }
+
+    public AssignRecord(params: AssignParams): Promise<AssignResultDto>
+    {
+        return this.connection.sendRequest(DataAssignmentProtocol.Assign, params)
     }
 
     public PrepareConnectors(modelId: string): Promise<void>

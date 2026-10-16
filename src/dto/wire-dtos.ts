@@ -425,3 +425,32 @@ export interface ListSharesResultDto
 {
     grants: ShareGrantDto[]
 }
+
+export enum AssignStatus
+{
+    Applied = 'applied',
+    Denied = 'denied',
+    Invalid = 'invalid',
+    NotFound = 'not-found',
+    Unsupported = 'unsupported',
+}
+
+export interface AssignOwnerDto
+{
+    kind: ShareSubjectKind
+    id: string
+}
+
+export interface AssignParams
+{
+    concept: string
+    id: string
+    owner: AssignOwnerDto
+    owningBu?: string
+}
+
+export interface AssignResultDto
+{
+    status: AssignStatus
+    reason?: string
+}
