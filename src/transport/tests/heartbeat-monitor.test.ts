@@ -51,3 +51,13 @@ test('a closed socket is dropped and never pinged again', () =>
     monitor.TickForTest()
     assert.equal(socket.pings, 0)
 })
+
+test('a pong after close does not resurrect the socket', () =>
+{
+    const monitor = new HeartbeatMonitor(30000)
+    const socket = new FakeSocket()
+    monitor.Watch(socket)
+    socket.Close()
+    socket.Pong()
+    assert.equal(monitor.WatchedCountForTest(), 0)
+})

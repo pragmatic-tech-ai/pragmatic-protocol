@@ -23,7 +23,13 @@ export class HeartbeatMonitor
     public Watch(socket: IHeartbeatSocket): void
     {
         this.alive.set(socket, true)
-        socket.on(HeartbeatMonitor.PongEvent, () => this.alive.set(socket, true))
+        socket.on(HeartbeatMonitor.PongEvent, () =>
+        {
+            if (this.alive.has(socket))
+            {
+                this.alive.set(socket, true)
+            }
+        })
         socket.on(HeartbeatMonitor.CloseEvent, () => this.alive.delete(socket))
     }
 
