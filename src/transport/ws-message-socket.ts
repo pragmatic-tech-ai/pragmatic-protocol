@@ -72,11 +72,12 @@ export class WsMessageSocket implements IMessageSocket
         {
             this.ws.close(TransportCloseCode.TryAgainLater)
         }
-        finally
+        catch
         {
-            this.ws.terminate()
-            this.onShed?.()
+            // a close that throws must not stop the terminate/onShed path, and must not escape Send synchronously
         }
+        this.ws.terminate()
+        this.onShed?.()
     }
 
     public OnMessage(handler: (json: string) => void): void

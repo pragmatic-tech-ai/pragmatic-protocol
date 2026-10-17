@@ -44,3 +44,18 @@ test('over hard continuously past the grace window sheds', () =>
     const shed = policy.Assess(9000, over.overHardSince, 5001)
     assert.equal(shed.action, BackpressureAction.Shed)
 })
+
+test('exactly at the hard limit counts as over and starts the grace clock', () =>
+{
+    const policy = new BackpressurePolicy(1000, 8000, 5000)
+    const result = policy.Assess(8000, undefined, 0)
+    assert.equal(result.action, BackpressureAction.Warn)
+    assert.equal(result.overHardSince, 0)
+})
+
+test('exactly at the grace boundary sheds', () =>
+{
+    const policy = new BackpressurePolicy(1000, 8000, 5000)
+    const result = policy.Assess(9000, 0, 5000)
+    assert.equal(result.action, BackpressureAction.Shed)
+})
