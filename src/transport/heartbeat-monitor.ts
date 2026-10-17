@@ -59,12 +59,31 @@ export class HeartbeatMonitor
         {
             if (!wasAlive)
             {
-                this.alive.delete(socket)
-                socket.terminate()
+                this.Drop(socket)
                 continue
             }
             this.alive.set(socket, false)
-            socket.ping()
+            try
+            {
+                socket.ping()
+            }
+            catch
+            {
+                this.Drop(socket)
+            }
+        }
+    }
+
+    private Drop(socket: IHeartbeatSocket): void
+    {
+        this.alive.delete(socket)
+        try
+        {
+            socket.terminate()
+        }
+        catch
+        {
+            // terminating an already-dead socket is harmless
         }
     }
 

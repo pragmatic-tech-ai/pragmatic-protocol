@@ -5,11 +5,12 @@ import { HeartbeatMonitor } from '../heartbeat-monitor.js'
 class FakeSocket
 {
     public pings = 0
+    public throwOnPing = false
     public terminated = false
     private pong: (() => void) | undefined
     private closeHandler: (() => void) | undefined
 
-    public ping(): void { this.pings++ }
+    public ping(): void { this.pings++; if (this.throwOnPing) { throw new Error('not open') } }
     public terminate(): void { this.terminated = true }
 
     public on(event: string, listener: () => void): void
@@ -60,4 +61,18 @@ test('a pong after close does not resurrect the socket', () =>
     socket.Close()
     socket.Pong()
     assert.equal(monitor.WatchedCountForTest(), 0)
+})
+
+test('a socket whose ping throws is dropped without aborting the sweep', () =>
+{
+    const monitor = new HeartbeatMonitor(30000)
+    const bad = new FakeSocket()
+    bad.throwOnPing = true
+    const good = new FakeSocket()
+    monitor.Watch(bad)
+    monitor.Watch(good)
+    monitor.TickForTest()
+    assert.equal(bad.terminated, true)
+    assert.equal(good.pings, 1)
+    assert.equal(monitor.WatchedCountForTest(), 1)
 })
