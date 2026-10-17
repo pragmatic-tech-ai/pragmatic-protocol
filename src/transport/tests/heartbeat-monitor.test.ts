@@ -10,7 +10,14 @@ class FakeSocket
     private pong: (() => void) | undefined
     private closeHandler: (() => void) | undefined
 
-    public ping(): void { this.pings++; if (this.throwOnPing) { throw new Error('not open') } }
+    public ping(): void
+    {
+        this.pings++
+        if (this.throwOnPing)
+        {
+            throw new Error('not open')
+        }
+    }
     public terminate(): void { this.terminated = true }
 
     public on(event: string, listener: () => void): void
