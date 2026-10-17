@@ -196,6 +196,7 @@ export class PragmaticClient
         {
             return
         }
+        // Any unexpected close — a server GoingAway (1001) or a transport drop — triggers reconnect; only a caller DisposeAsync (which sets `disposed` first) does not.
         this.idleGeneration++
         const lost = this.lost
         this.lost = PragmaticClient.NewLost()

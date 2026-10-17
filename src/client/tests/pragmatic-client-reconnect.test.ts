@@ -44,6 +44,11 @@ class FakeDialer implements ISocketDialer
     {
         this.servers[this.servers.length - 1]!.clientSocket.Close()
     }
+
+    public LatestServer(): MessageConnection
+    {
+        return this.servers[this.servers.length - 1]!.connection
+    }
 }
 
 test('an unexpected drop reconnects, re-dials, and the state signal fires Reconnecting then Open', async () =>
@@ -99,5 +104,19 @@ test('read-idle past readIdleMs without a socket close triggers a reconnect', as
     await new Promise(resolve => setImmediate(resolve))
     assert.equal(dialer.dials, 2)
     assert.equal(client.State(), ConnectionState.Open)
+    await client.DisposeAsync()
+})
+
+test('resubscribes graphChanged after an unexpected drop so a push on the new connection still fires', async () =>
+{
+    const dialer = new FakeDialer()
+    const client = await PragmaticClient.ConnectReconnecting(dialer, { reconnect: { initialDelayMs: 0, factor: 2, maxDelayMs: 0 }, schedule: (_ms, fn) => fn() })
+    const seen: string[] = []
+    client.OnGraphChanged(change => { for (const id of change.memberIds) { seen.push(id) } })
+    dialer.DropLatest()
+    await new Promise(resolve => setImmediate(resolve))
+    await dialer.LatestServer().sendNotification(SolutionProtocol.GraphChanged, { memberIds: ['m1'], fileIds: [] })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    assert.deepEqual(seen, ['m1'])
     await client.DisposeAsync()
 })
