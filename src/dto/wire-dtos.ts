@@ -432,6 +432,16 @@ export interface InvalidatePackParams
     name: string
 }
 
+export interface PackScriptsParams
+{
+    name: string
+}
+
+export interface ScriptAllowlistDto
+{
+    names: string[]
+}
+
 export type CypherParamValue = string | number | boolean | null | CypherParamValue[] | { [k: string]: CypherParamValue }
 
 export interface CypherQueryParams

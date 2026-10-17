@@ -1,5 +1,5 @@
 import { RequestType, RequestType0 } from 'vscode-jsonrpc'
-import type { GrantDto, GrantMutationDto, ListGrantsParams, IdentityConfigDto, AdminAckDto, AccountDto, CreateAccountParams, DisableAccountParams, ServiceTokenSummaryDto, IssueTokenParams, TokenIssuedDto, RevokeTokenParams, InvalidatePackParams } from '../dto/wire-dtos.js'
+import type { GrantDto, GrantMutationDto, ListGrantsParams, IdentityConfigDto, AdminAckDto, AccountDto, CreateAccountParams, DisableAccountParams, ServiceTokenSummaryDto, IssueTokenParams, TokenIssuedDto, RevokeTokenParams, InvalidatePackParams, PackScriptsParams, ScriptAllowlistDto } from '../dto/wire-dtos.js'
 
 /** JSON-RPC contracts for RBAC-gated tenant administration (grants + identity config). */
 export class AdminProtocol
@@ -16,4 +16,7 @@ export class AdminProtocol
     public static readonly IssueToken = new RequestType<IssueTokenParams, TokenIssuedDto, void>('admin/tokens/issue')
     public static readonly RevokeToken = new RequestType<RevokeTokenParams, AdminAckDto, void>('admin/tokens/revoke')
     public static readonly InvalidatePack = new RequestType<InvalidatePackParams, AdminAckDto, void>('admin/packs/invalidate')
+    public static readonly ListScriptAllowlist = new RequestType0<ScriptAllowlistDto, void>('admin/packs/scripts/list')
+    public static readonly AllowPackScripts = new RequestType<PackScriptsParams, AdminAckDto, void>('admin/packs/scripts/allow')
+    public static readonly DenyPackScripts = new RequestType<PackScriptsParams, AdminAckDto, void>('admin/packs/scripts/deny')
 }
