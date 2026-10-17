@@ -201,16 +201,17 @@ export interface EntityDto
     fields: Record<string, string | number | boolean | null>
 }
 
-export interface WriteConflictDto
+export interface WriteFailureDto
 {
     key: string | number | boolean | null
+    kind: string
     reason: string
 }
 
 export interface WriteResultDto
 {
     applied: number
-    conflicts: WriteConflictDto[]
+    failures: WriteFailureDto[]
 }
 
 export interface DiagnosticDto
@@ -539,6 +540,7 @@ export enum AppWriteStatus
     Conflict = 'conflict',
     Denied = 'denied',
     Invalid = 'invalid',
+    Failed = 'failed',
 }
 
 export interface AppWriteOpDto
