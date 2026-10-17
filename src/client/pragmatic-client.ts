@@ -28,7 +28,7 @@ import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
-    AssignParams, AssignResultDto,
+    AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -357,14 +357,50 @@ export class PragmaticClient
         return this.Request(LanguageProtocol.DiagnosticsFor, { uri })
     }
 
-    public ModelView(memberId: string): Promise<ModelViewPageDto>
+    public ModelView(memberId: string, page?: PageParams): Promise<ModelViewPageDto>
     {
-        return this.Request(ModelProtocol.ModelView, { memberId })
+        return this.Request(ModelProtocol.ModelView, { memberId, ...page })
     }
 
-    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }): Promise<CypherQueryPageDto>
+    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }, page?: PageParams): Promise<CypherQueryPageDto>
     {
-        return this.Request(CypherProtocol.Query, { cypher, parameters })
+        return this.Request(CypherProtocol.Query, { cypher, parameters, ...page })
+    }
+
+    public async *QueryAll(cypher: string, parameters?: { [k: string]: CypherParamValue }, pageSize?: number): AsyncIterable<CypherQueryPageDto>
+    {
+        let cursor: string | undefined
+        do
+        {
+            const page: CypherQueryPageDto = await this.CypherQuery(cypher, parameters, { cursor, pageSize })
+            yield page
+            cursor = page.nextCursor
+        }
+        while (cursor !== undefined)
+    }
+
+    public async *ReadAll(modelId: string, concept: string, pageSize?: number): AsyncIterable<Page<EntityDto>>
+    {
+        let cursor: string | undefined
+        do
+        {
+            const page: Page<EntityDto> = await this.ReadEntities(modelId, concept, { cursor, pageSize })
+            yield page
+            cursor = page.nextCursor
+        }
+        while (cursor !== undefined)
+    }
+
+    public async *ModelViewAll(memberId: string, pageSize?: number): AsyncIterable<ModelViewPageDto>
+    {
+        let cursor: string | undefined
+        do
+        {
+            const page: ModelViewPageDto = await this.ModelView(memberId, { cursor, pageSize })
+            yield page
+            cursor = page.nextCursor
+        }
+        while (cursor !== undefined)
     }
 
     public Resources(nodeId: string): Promise<ResolvedResourceDto[]>
@@ -380,6 +416,11 @@ export class PragmaticClient
     public OnGraphChanged(handler: (change: SolutionGraphChangePayload) => void): Disposable
     {
         return this.Subscribe(SolutionProtocol.GraphChanged, handler)
+    }
+
+    public OnBuildStateChanged(handler: (payload: BuildStateChangedPayload) => void): Disposable
+    {
+        return this.Subscribe(SolutionProtocol.BuildStateChanged, handler)
     }
 
     public OnDiagnostics(handler: (params: PublishDiagnosticsParams) => void): Disposable
@@ -437,9 +478,9 @@ export class PragmaticClient
         return this.RequestNoParams(ConnectorProtocol.Refresh)
     }
 
-    public ReadEntities(modelId: string, concept: string): Promise<Page<EntityDto>>
+    public ReadEntities(modelId: string, concept: string, page?: PageParams): Promise<Page<EntityDto>>
     {
-        return this.Request(ConnectorProtocol.Read, { modelId, concept })
+        return this.Request(ConnectorProtocol.Read, { modelId, concept, ...page })
     }
 
     public WriteBack(modelId: string, dirty: string[], deleted: string[]): Promise<FlushOutcomeDto>
