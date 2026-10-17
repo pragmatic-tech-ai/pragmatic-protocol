@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createMessageConnection, NullLogger, RequestType } from 'vscode-jsonrpc'
+import type { Message } from 'vscode-jsonrpc'
 import { InMemoryMessageSocket } from '../in-memory-message-socket.js'
 import { WebSocketMessageReader } from '../web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../web-socket-message-writer.js'
@@ -40,6 +41,6 @@ test('write rejects and fires onError when the socket is closed', async () =>
     let errored = false
     writer.onError(() => { errored = true })
     a.Close()
-    await assert.rejects(writer.write({ jsonrpc: '2.0', method: 'x' }))
+    await assert.rejects(writer.write({ jsonrpc: '2.0', method: 'x' } as Message))
     assert.equal(errored, true)
 })

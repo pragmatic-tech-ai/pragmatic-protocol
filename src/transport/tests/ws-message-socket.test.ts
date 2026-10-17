@@ -6,7 +6,7 @@ import { BackpressurePolicy } from '../backpressure-policy.js'
 
 class FakeWs
 {
-    public readyState = WebSocket.OPEN
+    public readyState: number = WebSocket.OPEN
     public lastSent: string | undefined
     public bufferedAmount = 0
     public closedCode: number | undefined

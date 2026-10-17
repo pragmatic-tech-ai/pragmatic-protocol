@@ -1,5 +1,5 @@
-import { createMessageConnection, NullLogger } from 'vscode-jsonrpc'
-import type { Disposable, MessageConnection } from 'vscode-jsonrpc'
+import { createMessageConnection, NullLogger, Emitter } from 'vscode-jsonrpc'
+import type { Disposable, Emitter as EmitterType, MessageConnection, RequestType, RequestType0, NotificationType } from 'vscode-jsonrpc'
 import { WebSocket } from 'ws'
 import type {
     CodeAction, CompletionItem, Diagnostic, DocumentSymbol, FoldingRange, Hover,
@@ -9,6 +9,12 @@ import type { IMessageSocket } from '../transport/message-socket.js'
 import { WebSocketMessageReader } from '../transport/web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../transport/web-socket-message-writer.js'
 import { WsMessageSocket } from '../transport/ws-message-socket.js'
+import { MultiplexMessageSocket } from '../transport/multiplex-message-socket.js'
+import { ConnectionLostError } from '../transport/transport-signals.js'
+import { ConnectionState } from './connection-state.js'
+import { ReconnectBackoff } from './reconnect-policy.js'
+import type { ReconnectPolicy } from './reconnect-policy.js'
+import type { ISocketDialer } from './socket-dialer.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
 import { ModelProtocol } from '../contracts/model-protocol.js'
@@ -25,23 +31,71 @@ import type {
     AssignParams, AssignResultDto,
 } from '../dto/wire-dtos.js'
 
-/** Typed JSON-RPC client over a WebSocket (or any IMessageSocket). */
+interface Subscription<P>
+{
+    type: NotificationType<P>
+    handler: (params: P) => void
+    live: Disposable
+}
+
+export interface ReconnectingOptions
+{
+    reconnect?: ReconnectPolicy
+    readIdleMs?: number
+    now?: () => number
+    schedule?: (ms: number, fn: () => void) => void
+}
+
+/** Typed JSON-RPC client over a WebSocket (or any IMessageSocket); optionally auto-reconnecting over a dialer. */
 export class PragmaticClient
 {
     private static readonly AuthorizationHeader = 'Authorization'
     private static readonly BearerPrefix = 'Bearer '
+    private static readonly DefaultReconnect: ReconnectPolicy = { initialDelayMs: 500, factor: 2, maxDelayMs: 30000 }
+    private static readonly DefaultReadIdleMs = 60000
 
-    private readonly connection: MessageConnection
-    private readonly socket: IMessageSocket
+    private connection: MessageConnection
+    private socket: IMessageSocket
+    private readonly dialer: ISocketDialer | undefined
+    private readonly backoff: ReconnectBackoff | undefined
+    private readonly schedule: (ms: number, fn: () => void) => void
+    private readonly now: () => number
+    private readonly readIdleMs: number | undefined
+    private readonly subscriptions = new Set<Subscription<unknown>>()
+    private readonly stateChanged: EmitterType<ConnectionState> = new Emitter<ConnectionState>()
+    private lost: { promise: Promise<never>, reject: (error: Error) => void }
+    private state: ConnectionState = ConnectionState.Connecting
+    private disposed = false
+    private attempt = 0
+    private lastInbound = 0
+    private idleGeneration = 0
 
-    private constructor(connection: MessageConnection, socket: IMessageSocket)
+    private constructor(connection: MessageConnection, socket: IMessageSocket, dialer?: ISocketDialer, backoff?: ReconnectBackoff, options: ReconnectingOptions = {})
     {
         this.connection = connection
         this.socket = socket
+        this.dialer = dialer
+        this.backoff = backoff
+        this.schedule = options.schedule ?? ((ms, fn) => { const timer = setTimeout(fn, ms); timer.unref() })
+        this.now = options.now ?? (() => Date.now())
+        this.readIdleMs = dialer === undefined ? undefined : (options.readIdleMs ?? PragmaticClient.DefaultReadIdleMs)
+        this.lost = PragmaticClient.NewLost()
+        this.WatchSocket(socket)
+        this.SetState(ConnectionState.Open)
+        this.ScheduleIdleCheck(++this.idleGeneration)
     }
 
-    public static CreateOverSocket(socket: IMessageSocket): PragmaticClient
+    private static NewLost(): { promise: Promise<never>, reject: (error: Error) => void }
     {
+        let reject: (error: Error) => void = () => {}
+        const promise = new Promise<never>((_resolve, rej) => { reject = rej })
+        promise.catch(() => {})
+        return { promise, reject }
+    }
+
+    public static CreateOverSocket(raw: IMessageSocket): PragmaticClient
+    {
+        const socket = new MultiplexMessageSocket(raw)
         const connection = createMessageConnection(new WebSocketMessageReader(socket), new WebSocketMessageWriter(socket), NullLogger)
         connection.listen()
         return new PragmaticClient(connection, socket)
@@ -72,99 +126,249 @@ export class PragmaticClient
         return PragmaticClient.CreateOverSocket(new WsMessageSocket(ws))
     }
 
+    public static async ConnectReconnecting(dialer: ISocketDialer, options: ReconnectingOptions = {}): Promise<PragmaticClient>
+    {
+        const socket = new MultiplexMessageSocket(await dialer.Dial())
+        const connection = createMessageConnection(new WebSocketMessageReader(socket), new WebSocketMessageWriter(socket), NullLogger)
+        connection.listen()
+        return new PragmaticClient(connection, socket, dialer, new ReconnectBackoff(options.reconnect ?? PragmaticClient.DefaultReconnect), options)
+    }
+
+    public State(): ConnectionState
+    {
+        return this.state
+    }
+
+    public OnStateChanged(handler: (state: ConnectionState) => void): Disposable
+    {
+        return this.stateChanged.event(handler)
+    }
+
+    private SetState(state: ConnectionState): void
+    {
+        if (this.state === state)
+        {
+            return
+        }
+        this.state = state
+        this.stateChanged.fire(state)
+    }
+
+    /** Wires close + inbound-activity tracking for a freshly installed socket. */
+    private WatchSocket(socket: IMessageSocket): void
+    {
+        this.lastInbound = this.now()
+        socket.OnMessage(() => { this.lastInbound = this.now() })
+        socket.OnClose(() => this.OnDrop(socket))
+    }
+
+    /** Periodic read-idle check via the schedule seam; a chain retires when its generation is superseded. */
+    private ScheduleIdleCheck(generation: number): void
+    {
+        if (this.readIdleMs === undefined || this.disposed || generation !== this.idleGeneration)
+        {
+            return
+        }
+        let scheduling = true
+        this.schedule(this.readIdleMs, () =>
+        {
+            if (this.disposed || generation !== this.idleGeneration)
+            {
+                return
+            }
+            const inline = scheduling
+            if (this.state === ConnectionState.Open && this.now() - this.lastInbound >= this.readIdleMs!)
+            {
+                this.OnDrop(this.socket)
+                return
+            }
+            if (!inline)
+            {
+                this.ScheduleIdleCheck(generation)
+            }
+        })
+        scheduling = false
+    }
+
+    private OnDrop(socket: IMessageSocket): void
+    {
+        if (this.disposed || this.dialer === undefined || socket !== this.socket || this.state === ConnectionState.Reconnecting)
+        {
+            return
+        }
+        this.idleGeneration++
+        const lost = this.lost
+        this.lost = PragmaticClient.NewLost()
+        lost.reject(new ConnectionLostError())
+        try
+        {
+            this.connection.dispose()
+        }
+        catch
+        {
+            // the connection may already be torn down
+        }
+        this.SetState(ConnectionState.Reconnecting)
+        try
+        {
+            socket.Close()
+        }
+        catch
+        {
+            // the socket may already be closed
+        }
+        this.attempt++
+        this.schedule(this.backoff!.Next(this.attempt), () => void this.Reconnect())
+    }
+
+    private async Reconnect(): Promise<void>
+    {
+        if (this.disposed || this.dialer === undefined)
+        {
+            return
+        }
+        try
+        {
+            const socket = new MultiplexMessageSocket(await this.dialer.Dial())
+            if (this.disposed)
+            {
+                socket.Close()
+                return
+            }
+            const connection = createMessageConnection(new WebSocketMessageReader(socket), new WebSocketMessageWriter(socket), NullLogger)
+            connection.listen()
+            this.socket = socket
+            this.connection = connection
+            for (const sub of this.subscriptions)
+            {
+                sub.live = connection.onNotification(sub.type, sub.handler)
+            }
+            this.WatchSocket(socket)
+            this.attempt = 0
+            this.SetState(ConnectionState.Open)
+            this.ScheduleIdleCheck(++this.idleGeneration)
+        }
+        catch
+        {
+            this.attempt++
+            this.schedule(this.backoff!.Next(this.attempt), () => void this.Reconnect())
+        }
+    }
+
+    private Request<P, R, E>(type: RequestType<P, R, E>, params: P): Promise<R>
+    {
+        return Promise.race([this.connection.sendRequest(type, params), this.lost.promise])
+    }
+
+    private RequestNoParams<R>(type: RequestType0<R, void>): Promise<R>
+    {
+        return Promise.race([this.connection.sendRequest(type), this.lost.promise])
+    }
+
+    private Subscribe<P>(type: NotificationType<P>, handler: (params: P) => void): Disposable
+    {
+        const entry: Subscription<P> = { type, handler, live: this.connection.onNotification(type, handler) }
+        this.subscriptions.add(entry as Subscription<unknown>)
+        return { dispose: () =>
+        {
+            this.subscriptions.delete(entry as Subscription<unknown>)
+            entry.live.dispose()
+        } }
+    }
+
     public OpenSolution(location: string): Promise<ActiveSolutionSummary>
     {
-        return this.connection.sendRequest(SolutionProtocol.OpenSolution, { location })
+        return this.Request(SolutionProtocol.OpenSolution, { location })
     }
 
     public ActiveSolution(): Promise<ActiveSolutionSummary | null>
     {
-        return this.connection.sendRequest(SolutionProtocol.ActiveSolution)
+        return this.RequestNoParams(SolutionProtocol.ActiveSolution)
     }
 
     public CompletionsAt(uri: string, position: Position): Promise<CompletionItem[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.CompletionsAt, { uri, position })
+        return this.Request(LanguageProtocol.CompletionsAt, { uri, position })
     }
 
     public HoverAt(uri: string, position: Position): Promise<Hover | null>
     {
-        return this.connection.sendRequest(LanguageProtocol.HoverAt, { uri, position })
+        return this.Request(LanguageProtocol.HoverAt, { uri, position })
     }
 
     public DefinitionAt(uri: string, position: Position): Promise<Location | null>
     {
-        return this.connection.sendRequest(LanguageProtocol.DefinitionAt, { uri, position })
+        return this.Request(LanguageProtocol.DefinitionAt, { uri, position })
     }
 
     public ReferencesAt(uri: string, position: Position, includeDeclaration: boolean): Promise<Location[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.ReferencesAt, { uri, position, includeDeclaration })
+        return this.Request(LanguageProtocol.ReferencesAt, { uri, position, includeDeclaration })
     }
 
     public PrepareRename(uri: string, position: Position): Promise<Range | null>
     {
-        return this.connection.sendRequest(LanguageProtocol.PrepareRename, { uri, position })
+        return this.Request(LanguageProtocol.PrepareRename, { uri, position })
     }
 
     public RenameEdits(uri: string, position: Position, newName: string): Promise<WorkspaceEdit | RenameErrorDto>
     {
-        return this.connection.sendRequest(LanguageProtocol.RenameEdits, { uri, position, newName })
+        return this.Request(LanguageProtocol.RenameEdits, { uri, position, newName })
     }
 
     public DocumentSymbols(uri: string): Promise<DocumentSymbol[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.DocumentSymbols, { uri })
+        return this.Request(LanguageProtocol.DocumentSymbols, { uri })
     }
 
     public FoldingRanges(uri: string): Promise<FoldingRange[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.FoldingRanges, { uri })
+        return this.Request(LanguageProtocol.FoldingRanges, { uri })
     }
 
     public WorkspaceSymbols(query: string): Promise<WorkspaceSymbol[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.WorkspaceSymbols, { query })
+        return this.Request(LanguageProtocol.WorkspaceSymbols, { query })
     }
 
     public SemanticTokens(uri: string): Promise<SemanticTokens>
     {
-        return this.connection.sendRequest(LanguageProtocol.SemanticTokens, { uri })
+        return this.Request(LanguageProtocol.SemanticTokens, { uri })
     }
 
     public SignatureHelpAt(uri: string, position: Position): Promise<SignatureHelp | null>
     {
-        return this.connection.sendRequest(LanguageProtocol.SignatureHelpAt, { uri, position })
+        return this.Request(LanguageProtocol.SignatureHelpAt, { uri, position })
     }
 
     public CodeActions(uri: string, range: Range, diagnostics: Diagnostic[]): Promise<CodeAction[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.CodeActions, { uri, range, diagnostics })
+        return this.Request(LanguageProtocol.CodeActions, { uri, range, diagnostics })
     }
 
     public FormatDocument(uri: string): Promise<TextEdit[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.FormatDocument, { uri })
+        return this.Request(LanguageProtocol.FormatDocument, { uri })
     }
 
     public DiagnosticsFor(uri: string): Promise<Diagnostic[]>
     {
-        return this.connection.sendRequest(LanguageProtocol.DiagnosticsFor, { uri })
+        return this.Request(LanguageProtocol.DiagnosticsFor, { uri })
     }
 
     public ModelView(memberId: string): Promise<ModelProjection>
     {
-        return this.connection.sendRequest(ModelProtocol.ModelView, { memberId })
+        return this.Request(ModelProtocol.ModelView, { memberId })
     }
 
     public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }): Promise<CypherQueryResultDto>
     {
-        return this.connection.sendRequest(CypherProtocol.Query, { cypher, parameters })
+        return this.Request(CypherProtocol.Query, { cypher, parameters })
     }
 
     public Resources(nodeId: string): Promise<ResolvedResourceDto[]>
     {
-        return this.connection.sendRequest(ModelProtocol.Resources, { nodeId })
+        return this.Request(ModelProtocol.Resources, { nodeId })
     }
 
     public DidChange(uri: string, text: string): void
@@ -174,81 +378,83 @@ export class PragmaticClient
 
     public OnGraphChanged(handler: (change: SolutionGraphChangePayload) => void): Disposable
     {
-        return this.connection.onNotification(SolutionProtocol.GraphChanged, handler)
+        return this.Subscribe(SolutionProtocol.GraphChanged, handler)
     }
 
     public OnDiagnostics(handler: (params: PublishDiagnosticsParams) => void): Disposable
     {
-        return this.connection.onNotification(LanguageProtocol.PublishDiagnostics, handler)
+        return this.Subscribe(LanguageProtocol.PublishDiagnostics, handler)
     }
 
     public Connectors(): Promise<ConnectorModelDto[]>
     {
-        return this.connection.sendRequest(ConnectorProtocol.List)
+        return this.RequestNoParams(ConnectorProtocol.List)
     }
 
     public ListApplications(): Promise<PragmaticAppSummaryDto[]>
     {
-        return this.connection.sendRequest(PragmaticAppProtocol.List)
+        return this.RequestNoParams(PragmaticAppProtocol.List)
     }
 
     public OpenApplication(name: string): Promise<PragmaticAppSummaryDto>
     {
-        return this.connection.sendRequest(PragmaticAppProtocol.Open, { name })
+        return this.Request(PragmaticAppProtocol.Open, { name })
     }
 
     public WriteAppData(params: AppWriteParams): Promise<AppWriteResultDto>
     {
-        return this.connection.sendRequest(AppDataProtocol.Write, params)
+        return this.Request(AppDataProtocol.Write, params)
     }
 
     public ShareRecord(params: ShareParams): Promise<ShareResultDto>
     {
-        return this.connection.sendRequest(DataSharingProtocol.Share, params)
+        return this.Request(DataSharingProtocol.Share, params)
     }
 
     public UnshareRecord(params: UnshareParams): Promise<UnshareResultDto>
     {
-        return this.connection.sendRequest(DataSharingProtocol.Unshare, params)
+        return this.Request(DataSharingProtocol.Unshare, params)
     }
 
     public ListRecordShares(params: ListSharesParams): Promise<ListSharesResultDto>
     {
-        return this.connection.sendRequest(DataSharingProtocol.ListShares, params)
+        return this.Request(DataSharingProtocol.ListShares, params)
     }
 
     public AssignRecord(params: AssignParams): Promise<AssignResultDto>
     {
-        return this.connection.sendRequest(DataAssignmentProtocol.Assign, params)
+        return this.Request(DataAssignmentProtocol.Assign, params)
     }
 
     public PrepareConnectors(modelId: string): Promise<void>
     {
-        return this.connection.sendRequest(ConnectorProtocol.Prepare, { modelId })
+        return this.Request(ConnectorProtocol.Prepare, { modelId })
     }
 
     public RefreshConnectors(): Promise<void>
     {
-        return this.connection.sendRequest(ConnectorProtocol.Refresh)
+        return this.RequestNoParams(ConnectorProtocol.Refresh)
     }
 
     public ReadEntities(modelId: string, concept: string): Promise<EntityDto[]>
     {
-        return this.connection.sendRequest(ConnectorProtocol.Read, { modelId, concept })
+        return this.Request(ConnectorProtocol.Read, { modelId, concept })
     }
 
     public WriteBack(modelId: string, dirty: string[], deleted: string[]): Promise<FlushOutcomeDto>
     {
-        return this.connection.sendRequest(ConnectorProtocol.WriteBack, { modelId, dirty, deleted })
+        return this.Request(ConnectorProtocol.WriteBack, { modelId, dirty, deleted })
     }
 
     public TestConnection(modelId: string, connectorName: string): Promise<ConnectionProbeDto>
     {
-        return this.connection.sendRequest(ConnectorProtocol.Test, { modelId, connectorName })
+        return this.Request(ConnectorProtocol.Test, { modelId, connectorName })
     }
 
     public async DisposeAsync(): Promise<void>
     {
+        this.disposed = true
+        this.SetState(ConnectionState.Closed)
         this.connection.dispose()
         this.socket.Close()
     }
