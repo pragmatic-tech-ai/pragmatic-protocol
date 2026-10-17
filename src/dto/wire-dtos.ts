@@ -427,6 +427,11 @@ export interface RevokeTokenParams
     tokenRef: string
 }
 
+export interface InvalidatePackParams
+{
+    name: string
+}
+
 export type CypherParamValue = string | number | boolean | null | CypherParamValue[] | { [k: string]: CypherParamValue }
 
 export interface CypherQueryParams
