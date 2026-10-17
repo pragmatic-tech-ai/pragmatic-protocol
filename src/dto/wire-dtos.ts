@@ -65,10 +65,35 @@ export interface SolutionMemberSummary
     type: string
 }
 
+export enum BuildState
+{
+    Building = 'building',
+    Ready = 'ready',
+    Failed = 'failed',
+}
+
 export interface ActiveSolutionSummary
 {
     name: string
     members: SolutionMemberSummary[]
+    buildState: BuildState
+}
+
+export interface BuildStateChangedPayload
+{
+    buildState: BuildState
+}
+
+export interface PageParams
+{
+    cursor?: string
+    pageSize?: number
+}
+
+export interface Page<T>
+{
+    items: T[]
+    nextCursor?: string
 }
 
 export interface SolutionGraphChangePayload
@@ -77,7 +102,7 @@ export interface SolutionGraphChangePayload
     fileIds: string[]
 }
 
-export interface ModelViewParams
+export interface ModelViewParams extends PageParams
 {
     memberId: string
 }
@@ -87,15 +112,27 @@ export interface ResourcesParams
     nodeId: string
 }
 
+export interface ModelEdgeDto
+{
+    kind: string
+    via: string | null
+    to: string
+}
+
 export interface ModelMemberDto
 {
     id: string
     kind: string | null
+    localId: string
+    namespace: string
+    tier: string
+    isClass: boolean
+    attrs: Record<string, string | number | boolean | null>
+    edges: ModelEdgeDto[]
 }
 
-export interface ModelProjection
+export interface ModelViewPageDto extends Page<ModelMemberDto>
 {
-    members: ModelMemberDto[]
     provenanceOf: Record<string, string>
 }
 
@@ -144,7 +181,7 @@ export interface ConnectorPrepareParams
     modelId: string
 }
 
-export interface ConnectorReadParams
+export interface ConnectorReadParams extends PageParams
 {
     modelId: string
     concept: string
@@ -444,7 +481,7 @@ export interface ScriptAllowlistDto
 
 export type CypherParamValue = string | number | boolean | null | CypherParamValue[] | { [k: string]: CypherParamValue }
 
-export interface CypherQueryParams
+export interface CypherQueryParams extends PageParams
 {
     cypher: string
     parameters?: { [k: string]: CypherParamValue }
@@ -472,10 +509,9 @@ export interface CypherNodeCellDto
 // Mirrors CypherValueDto. The node member precedes the generic-object member.
 export type CypherCellDto = string | number | boolean | null | CypherNodeCellDto | CypherCellDto[] | { [k: string]: CypherCellDto }
 
-export interface CypherQueryResultDto
+export interface CypherQueryPageDto extends Page<CypherCellDto[]>
 {
     columns: string[]
-    rows: CypherCellDto[][]
     truncated: boolean
 }
 

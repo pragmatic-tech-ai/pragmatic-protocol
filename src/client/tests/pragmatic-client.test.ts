@@ -7,7 +7,7 @@ import { WebSocketMessageWriter } from '../../transport/web-socket-message-write
 import { LanguageProtocol } from '../../contracts/language-protocol.js'
 import { SolutionProtocol } from '../../contracts/solution-protocol.js'
 import { CypherProtocol } from '../../contracts/cypher-protocol.js'
-import type { CypherQueryResultDto } from '../../dto/wire-dtos.js'
+import type { CypherQueryPageDto } from '../../dto/wire-dtos.js'
 import { PragmaticClient } from '../pragmatic-client.js'
 
 test('client sends a typed request and receives the typed result', async () =>
@@ -45,7 +45,7 @@ test('client receives a diagnostics push notification', async () =>
 
 test('client CypherQuery sends the query and receives the result DTO', async () =>
 {
-    const stub: CypherQueryResultDto = { columns: ['a.name'], rows: [['Alice'], ['Bob']], truncated: false }
+    const stub: CypherQueryPageDto = { columns: ['a.name'], items: [['Alice'], ['Bob']], truncated: false }
     const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
     const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
     let received: unknown

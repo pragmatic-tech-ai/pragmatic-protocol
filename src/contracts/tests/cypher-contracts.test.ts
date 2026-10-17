@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import type { CypherNodeCellDto, CypherQueryResultDto } from '../../dto/wire-dtos.js'
+import type { CypherNodeCellDto, CypherQueryPageDto } from '../../dto/wire-dtos.js'
 import { CypherProtocol } from '../cypher-protocol.js'
 
 class CypherContractFixtures
@@ -14,7 +14,7 @@ class CypherContractFixtures
     private static readonly Column = 'n'
     private static readonly CountColumn = 'cnt'
 
-    public static Result(): CypherQueryResultDto
+    public static Result(): CypherQueryPageDto
     {
         const node: CypherNodeCellDto = {
             id: CypherContractFixtures.NodeId,
@@ -31,7 +31,7 @@ class CypherContractFixtures
         }
         return {
             columns: [CypherContractFixtures.Column, CypherContractFixtures.CountColumn],
-            rows: [[node, 3], [{ nested: [node] }, null]],
+            items: [[node, 3], [{ nested: [node] }, null]],
             truncated: false
         }
     }

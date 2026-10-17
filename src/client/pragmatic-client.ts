@@ -25,8 +25,8 @@ import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
 import type {
-    ActiveSolutionSummary, ModelProjection, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
-    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryResultDto, PragmaticAppSummaryDto,
+    ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
+    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto,
 } from '../dto/wire-dtos.js'
@@ -357,12 +357,12 @@ export class PragmaticClient
         return this.Request(LanguageProtocol.DiagnosticsFor, { uri })
     }
 
-    public ModelView(memberId: string): Promise<ModelProjection>
+    public ModelView(memberId: string): Promise<ModelViewPageDto>
     {
         return this.Request(ModelProtocol.ModelView, { memberId })
     }
 
-    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }): Promise<CypherQueryResultDto>
+    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }): Promise<CypherQueryPageDto>
     {
         return this.Request(CypherProtocol.Query, { cypher, parameters })
     }
@@ -437,7 +437,7 @@ export class PragmaticClient
         return this.RequestNoParams(ConnectorProtocol.Refresh)
     }
 
-    public ReadEntities(modelId: string, concept: string): Promise<EntityDto[]>
+    public ReadEntities(modelId: string, concept: string): Promise<Page<EntityDto>>
     {
         return this.Request(ConnectorProtocol.Read, { modelId, concept })
     }
