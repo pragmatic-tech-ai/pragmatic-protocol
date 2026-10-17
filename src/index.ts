@@ -18,3 +18,5 @@ export { TransportCloseCode, ConnectionLostError, DrainingError } from './transp
 export { PragmaticClient } from './client/pragmatic-client.js'
 export { createMessageConnection, NullLogger, ResponseError, ErrorCodes } from 'vscode-jsonrpc'
 export type { MessageConnection, Disposable, RequestType, NotificationType } from 'vscode-jsonrpc'
+export { HeartbeatMonitor } from './transport/heartbeat-monitor.js'
+export type { IHeartbeatSocket } from './transport/heartbeat-monitor.js'
