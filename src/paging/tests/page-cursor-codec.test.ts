@@ -6,7 +6,14 @@ import { CursorStaleError } from '../../dto/wire-errors.js'
 class CodecFixtures
 {
     private static readonly Fingerprint = 'abc/+=fp'
+    private static readonly Base64Url = 'base64url'
+    private static readonly NotJson = 'not json'
     private static readonly SymbolHeavy = '???>>>~~~'
+
+    public static Garbage(): string
+    {
+        return CodecFixtures.NotJson
+    }
 
     public static Fp(): string
     {
@@ -20,7 +27,7 @@ class CodecFixtures
 
     public static B64(text: string): string
     {
-        return Buffer.from(text).toString('base64url')
+        return Buffer.from(text).toString(CodecFixtures.Base64Url)
     }
 }
 
@@ -41,16 +48,21 @@ test('decodes garbage to undefined', () =>
     const garbage = [
         '%%%',
         '',
-        CodecFixtures.B64('not json'),
+        CodecFixtures.B64(CodecFixtures.Garbage()),
         CodecFixtures.B64('{"offset":"x","fingerprint":"f"}'),
         CodecFixtures.B64('{"offset":-1,"fingerprint":"f"}'),
         CodecFixtures.B64('{"offset":1.5,"fingerprint":"f"}'),
         CodecFixtures.B64('{"offset":1}'),
-        CodecFixtures.B64('null')
+        CodecFixtures.B64('null'),
+        CodecFixtures.B64('[1,"f"]'),
+        CodecFixtures.B64('{"offset":1e300,"fingerprint":"f"}'),
+        CodecFixtures.B64('{"offset":1152921504606846976,"fingerprint":"f"}'),
+        undefined as unknown as string,
+        42 as unknown as string
     ]
     for (const g of garbage)
     {
-        assert.equal(PageCursorCodec.Decode(g), undefined, g)
+        assert.equal(PageCursorCodec.Decode(g), undefined, String(g))
     }
 })
 

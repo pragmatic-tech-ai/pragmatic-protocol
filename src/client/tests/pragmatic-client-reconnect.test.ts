@@ -6,6 +6,7 @@ import { InMemoryMessageSocket } from '../../transport/in-memory-message-socket.
 import { WebSocketMessageReader } from '../../transport/web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../../transport/web-socket-message-writer.js'
 import { SolutionProtocol } from '../../contracts/solution-protocol.js'
+import { BuildState } from '../../dto/wire-dtos.js'
 import type { IMessageSocket } from '../../transport/message-socket.js'
 import type { ISocketDialer } from '../socket-dialer.js'
 import { ConnectionState } from '../connection-state.js'
@@ -22,7 +23,7 @@ class PairedServer
         const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
         this.clientSocket = clientSocket
         this.connection = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
-        this.connection.onRequest(SolutionProtocol.OpenSolution, params => ({ name: params.location, members: [] }))
+        this.connection.onRequest(SolutionProtocol.OpenSolution, params => ({ name: params.location, members: [], buildState: BuildState.Ready }))
         this.connection.listen()
     }
 }

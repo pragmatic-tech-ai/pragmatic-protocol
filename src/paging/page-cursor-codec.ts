@@ -27,12 +27,12 @@ export class PageCursorCodec
                 return undefined
             }
             const parsed: unknown = JSON.parse(Buffer.from(text, PageCursorCodec.Encoding).toString(PageCursorCodec.TextEncoding))
-            if (typeof parsed !== 'object' || parsed === null)
+            if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
             {
                 return undefined
             }
             const candidate = parsed as { offset?: unknown, fingerprint?: unknown }
-            if (typeof candidate.offset !== 'number' || !Number.isInteger(candidate.offset) || candidate.offset < 0)
+            if (typeof candidate.offset !== 'number' || !Number.isSafeInteger(candidate.offset) || candidate.offset < 0)
             {
                 return undefined
             }

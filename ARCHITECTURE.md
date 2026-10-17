@@ -28,7 +28,7 @@ src/
 | `ModelProtocol` | `model-protocol.ts:5` | `model/view`, `model/resources` |
 | `ConnectorProtocol` | `connector-protocol.ts:6` | `connector/{list(0),prepare,refresh(0),read,writeBack,test}` |
 | `AdminProtocol` | `admin-protocol.ts:5` | `admin/grants/{list,grant,revoke}`, `admin/config/{get(0),set}`, `admin/accounts/{list(0),create,disable}`, `admin/tokens/{list(0),issue,revoke}` |
-| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryResultDto, void>` (:9); method hoisted to `QueryMethod` (:7) |
+| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>` (:9); method hoisted to `QueryMethod` (:7) |
 | `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
 | `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
 | `DataSharingProtocol` | `data-sharing-protocol.ts:5` | `data/share`, `data/unshare`, `data/shares/list` (SP-5 record sharing; `ShareSubjectKind`, share grant DTOs) |
@@ -38,7 +38,7 @@ src/
 
 Single file. Only external import: `Diagnostic/Position/Range` from `vscode-languageserver-types` (:1). One PascalCase outlier: `RenameErrorDto.Error` (:57).
 
-- **Language params** (:3-50); **Solution/model** (:52-107: `OpenSolutionParams`, `ActiveSolutionSummary`, `SolutionGraphChangePayload`, `ModelViewParams`, `ModelProjection`, `ResolvedResourceDto`, …).
+- **Language params** (:3-50); **Solution/model** (:52-107: `OpenSolutionParams`, `ActiveSolutionSummary`, `SolutionGraphChangePayload`, `ModelViewParams`, `ModelViewPageDto`, `Page<T>`/`PageParams` (items/nextCursor envelope), `BuildState`, `BuildStateChangedPayload`, `ResolvedResourceDto`, …).
 - **Connector** (:109-189: `ConnectorInfoDto`, `ConnectorModelDto`, `EntityDto`, `WriteResultDto`, …).
 - **Admin** (:191-273: `GrantDto`, `IdentityConfigDto`, `AccountDto`, `ServiceTokenSummaryDto`, `TokenIssuedDto`, …).
 - **Cypher** (:275-310):
@@ -46,7 +46,7 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
   - `CypherFieldSnapshotDto` `{ value, definitionOrigin, valueOrigin }` (:283).
   - `CypherNodeCellDto` (:291) — structural mirror of TODL MirrorSnapshot: `{ id, concept, class?, label, fields: map<CypherFieldSnapshotDto>, refs: map<string[]>, iconKey? }`.
   - `CypherCellDto` (:303) — recursive union; **node member precedes the generic-object member** (ordering matters for runtime narrowing).
-  - `CypherQueryResultDto` (:305) — `{ columns: string[], rows: CypherCellDto[][], truncated: boolean }`.
+  - `CypherQueryPageDto` — `Page<CypherCellDto[]>` + `{ columns: string[], truncated: boolean }` (rows are `items`, paging via `nextCursor`). Cursor codec: `PageCursorCodec` (`src/paging`); stale-cursor error code: `CursorStaleError` (-32032).
 
 ## Transport (`src/transport/`)
 
