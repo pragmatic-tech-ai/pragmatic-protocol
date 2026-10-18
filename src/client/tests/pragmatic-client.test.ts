@@ -7,8 +7,8 @@ import { WebSocketMessageWriter } from '../../transport/web-socket-message-write
 import { LanguageProtocol } from '../../contracts/language-protocol.js'
 import { SolutionProtocol } from '../../contracts/solution-protocol.js'
 import { CypherProtocol } from '../../contracts/cypher-protocol.js'
-import { BuildState } from '../../dto/wire-dtos.js'
-import type { CypherQueryPageDto } from '../../dto/wire-dtos.js'
+import { AppWriteStatus, BuildState } from '../../dto/wire-dtos.js'
+import type { CypherExecuteResultDto, CypherQueryPageDto } from '../../dto/wire-dtos.js'
 import { PragmaticClient } from '../pragmatic-client.js'
 
 test('client sends a typed request and receives the typed result', async () =>
@@ -80,6 +80,33 @@ test('client CypherQuery carries modelId', async () =>
     const result = await client.CypherQuery('MATCH (a) RETURN a.name', undefined, undefined, 'm1')
     assert.deepEqual(result, stub)
     assert.deepEqual(received, { cypher: 'MATCH (a) RETURN a.name', modelId: 'm1' })
+    await client.DisposeAsync()
+    server.dispose()
+})
+
+test('client CypherExecute routes to cypher/execute with its params', async () =>
+{
+    const stub: CypherExecuteResultDto = {
+        status: AppWriteStatus.Applied,
+        counts: { nodesCreated: 1, nodesDeleted: 0, relationshipsCreated: 0, relationshipsDeleted: 0, propertiesSet: 2 },
+        revision: 5,
+        columns: [],
+        rows: [],
+        truncated: false
+    }
+    const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
+    const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
+    let received: unknown
+    server.onRequest(CypherProtocol.Execute, params =>
+    {
+        received = params
+        return stub
+    })
+    server.listen()
+    const client = PragmaticClient.CreateOverSocket(clientSocket)
+    const result = await client.CypherExecute('CREATE (n:A)', { x: 1 }, 'm1', 4)
+    assert.deepEqual(result, stub)
+    assert.deepEqual(received, { cypher: 'CREATE (n:A)', parameters: { x: 1 }, modelId: 'm1', expectedRevision: 4 })
     await client.DisposeAsync()
     server.dispose()
 })
