@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { AppWriteStatus } from '../../dto/wire-dtos.js'
-import type { CypherNodeCellDto, CypherQueryPageDto, CypherQueryParams } from '../../dto/wire-dtos.js'
+import type { CypherExecuteResultDto, CypherNodeCellDto, CypherQueryPageDto, CypherQueryParams } from '../../dto/wire-dtos.js'
 import { CypherProtocol } from '../cypher-protocol.js'
 
 class CypherContractFixtures
@@ -86,4 +86,24 @@ test('app write status wire values are stable', () =>
     assert.deepEqual(
         [AppWriteStatus.Applied, AppWriteStatus.Conflict, AppWriteStatus.Denied, AppWriteStatus.Invalid, AppWriteStatus.Failed],
         ['applied', 'conflict', 'denied', 'invalid', 'failed'])
+})
+
+test('cypher execute result survives a JSON round trip', () =>
+{
+    const node: CypherNodeCellDto = {
+        id: 'n1',
+        concept: 'Component',
+        label: 'Billing',
+        fields: { owner: { value: 'team', definitionOrigin: 'Component', valueOrigin: 'Component' } },
+        refs: { dependsOn: ['n2'] }
+    }
+    const dto: CypherExecuteResultDto = {
+        status: AppWriteStatus.Applied,
+        counts: { nodesCreated: 1, nodesDeleted: 2, relationshipsCreated: 3, relationshipsDeleted: 4, propertiesSet: 5 },
+        revision: 7,
+        columns: ['n', 'cnt'],
+        rows: [[node, 3], [null, 0]],
+        truncated: false
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(dto)), dto)
 })
