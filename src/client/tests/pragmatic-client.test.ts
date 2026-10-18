@@ -110,3 +110,30 @@ test('client CypherExecute routes to cypher/execute with its params', async () =
     await client.DisposeAsync()
     server.dispose()
 })
+
+test('client CypherExecute drops omitted optionals from the wire payload', async () =>
+{
+    const stub: CypherExecuteResultDto = {
+        status: AppWriteStatus.Applied,
+        counts: { nodesCreated: 0, nodesDeleted: 0, relationshipsCreated: 0, relationshipsDeleted: 0, propertiesSet: 0 },
+        revision: 1,
+        columns: [],
+        rows: [],
+        truncated: false
+    }
+    const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
+    const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
+    let received: unknown
+    server.onRequest(CypherProtocol.Execute, params =>
+    {
+        received = params
+        return stub
+    })
+    server.listen()
+    const client = PragmaticClient.CreateOverSocket(clientSocket)
+    await client.CypherExecute('CREATE (n:A)')
+    assert.deepEqual(received, { cypher: 'CREATE (n:A)' })
+    assert.deepEqual(Object.keys(received as object), ['cypher'])
+    await client.DisposeAsync()
+    server.dispose()
+})

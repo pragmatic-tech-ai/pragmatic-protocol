@@ -379,6 +379,10 @@ export class PragmaticClient
         while (cursor !== undefined)
     }
 
+    /**
+     * Runs a Cypher write statement. modelId is typed optional (consistent with CypherQuery), but the
+     * cypher/execute server REQUIRES it and returns InvalidParams if omitted.
+     */
     public CypherExecute(cypher: string, parameters?: { [k: string]: CypherParamValue }, modelId?: string, expectedRevision?: number): Promise<CypherExecuteResultDto>
     {
         return this.Request(CypherProtocol.Execute, { cypher, parameters, modelId, expectedRevision })

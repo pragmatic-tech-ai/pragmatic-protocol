@@ -566,6 +566,7 @@ export interface CypherExecuteParams
 {
     cypher: string
     parameters?: { [k: string]: CypherParamValue }
+    /** Typed optional on the wire (consistent with the read side), but the cypher/execute server REQUIRES it and returns InvalidParams if omitted. */
     modelId?: string
     expectedRevision?: number
 }
