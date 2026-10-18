@@ -80,6 +80,10 @@ test('ConnectorPagedWriteParams round-trips through JSON', () =>
     }
     const back = JSON.parse(JSON.stringify(params)) as ConnectorPagedWriteParams
     assert.deepEqual(back, params)
+})
+
+test('ConnectorWriteOp enum carries its wire values', () =>
+{
     assert.equal(ConnectorWriteOp.Upsert, 'upsert')
     assert.equal(ConnectorWriteOp.Delete, 'delete')
 })
@@ -92,6 +96,7 @@ test('ConnectorPagedWriteResultDto round-trips every AppWriteStatus', () =>
             { key: 'a', status: AppWriteStatus.Conflict, reason: 'stale' },
             { key: true, status: AppWriteStatus.Failed, reason: 'boom' },
             { key: null, status: AppWriteStatus.Invalid, reason: 'bad' },
+            { key: 2, status: AppWriteStatus.Denied, reason: 'no' },
         ],
     }
     const back = JSON.parse(JSON.stringify(result)) as ConnectorPagedWriteResultDto
