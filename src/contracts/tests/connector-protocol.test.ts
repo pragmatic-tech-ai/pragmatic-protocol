@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ConnectorProtocol } from '../connector-protocol.js'
-import { AppWriteStatus } from '../../dto/wire-dtos.js'
-import type { WriteResultDto, ConnectorRefreshOutcomeDto } from '../../dto/wire-dtos.js'
+import { AppWriteStatus, ConnectorWriteOp } from '../../dto/wire-dtos.js'
+import type { WriteResultDto, ConnectorRefreshOutcomeDto, ConnectorPagedWriteParams, ConnectorPagedWriteResultDto } from '../../dto/wire-dtos.js'
 
 test('ConnectorProtocol method strings are stable and namespaced', () =>
 {
@@ -51,4 +51,49 @@ test('ConnectorRefreshOutcomeDto round-trips through JSON', () =>
     }
     const back = JSON.parse(JSON.stringify(outcome)) as ConnectorRefreshOutcomeDto
     assert.deepEqual(back, outcome)
+})
+
+test('paged connector method strings are stable and legacy ones unchanged', () =>
+{
+    assert.equal(ConnectorProtocol.ReadPage.method, 'connector/readPage')
+    assert.equal(ConnectorProtocol.WritePaged.method, 'connector/writePaged')
+    assert.equal(ConnectorProtocol.Read.method, 'connector/read')
+    assert.equal(ConnectorProtocol.WriteBack.method, 'connector/writeBack')
+})
+
+test('ConnectorPagedWriteParams round-trips through JSON', () =>
+{
+    const params: ConnectorPagedWriteParams = {
+        modelId: 'm1',
+        operations: [
+            {
+                op: ConnectorWriteOp.Upsert,
+                concept: 'Customer',
+                connector: 'crm',
+                source: 'customers',
+                key: 7,
+                fields: { name: 'Ann', active: true, note: null },
+                expectedVersion: 'v3',
+            },
+            { op: ConnectorWriteOp.Delete, concept: 'Customer', connector: 'crm', source: 'customers', key: 'k9' },
+        ],
+    }
+    const back = JSON.parse(JSON.stringify(params)) as ConnectorPagedWriteParams
+    assert.deepEqual(back, params)
+    assert.equal(ConnectorWriteOp.Upsert, 'upsert')
+    assert.equal(ConnectorWriteOp.Delete, 'delete')
+})
+
+test('ConnectorPagedWriteResultDto round-trips every AppWriteStatus', () =>
+{
+    const result: ConnectorPagedWriteResultDto = {
+        results: [
+            { key: 1, status: AppWriteStatus.Applied },
+            { key: 'a', status: AppWriteStatus.Conflict, reason: 'stale' },
+            { key: true, status: AppWriteStatus.Failed, reason: 'boom' },
+            { key: null, status: AppWriteStatus.Invalid, reason: 'bad' },
+        ],
+    }
+    const back = JSON.parse(JSON.stringify(result)) as ConnectorPagedWriteResultDto
+    assert.deepEqual(back, result)
 })

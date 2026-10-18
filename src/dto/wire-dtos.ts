@@ -187,6 +187,41 @@ export interface ConnectorReadParams extends PageParams
     concept: string
 }
 
+export enum ConnectorWriteOp
+{
+    Upsert = 'upsert',
+    Delete = 'delete',
+}
+
+export interface ConnectorWriteOpDto
+{
+    op: ConnectorWriteOp
+    concept: string
+    connector: string
+    source: string
+    key: string | number | boolean
+    fields?: Record<string, string | number | boolean | null>
+    expectedVersion?: string | number | boolean | null
+}
+
+export interface ConnectorPagedWriteParams
+{
+    modelId: string
+    operations: ConnectorWriteOpDto[]
+}
+
+export interface ConnectorWriteOpResultDto
+{
+    key: string | number | boolean | null
+    status: AppWriteStatus
+    reason?: string
+}
+
+export interface ConnectorPagedWriteResultDto
+{
+    results: ConnectorWriteOpResultDto[]
+}
+
 export interface ConnectorWriteBackParams
 {
     modelId: string
