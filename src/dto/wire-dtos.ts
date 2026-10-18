@@ -531,6 +531,7 @@ export interface CypherQueryParams extends PageParams
 {
     cypher: string
     parameters?: { [k: string]: CypherParamValue }
+    modelId?: string
 }
 
 export interface CypherFieldSnapshotDto

@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import type { CypherNodeCellDto, CypherQueryPageDto } from '../../dto/wire-dtos.js'
+import { readFileSync } from 'node:fs'
+import type { CypherNodeCellDto, CypherQueryPageDto, CypherQueryParams } from '../../dto/wire-dtos.js'
 import { CypherProtocol } from '../cypher-protocol.js'
 
 class CypherContractFixtures
@@ -46,4 +47,30 @@ test('cypher query result with node cells survives a JSON round trip', () =>
 test('cypher contract carries its wire method name', () =>
 {
     assert.equal(CypherProtocol.Query.method, 'cypher/query')
+})
+
+class CypherModelIdFixtures
+{
+    public static readonly ModelId = 'x'
+    public static readonly Query = 'MATCH (n) RETURN n'
+    public static readonly ExpectedVersion = '0.6.0'
+    public static readonly PackageJson = '../../../package.json'
+}
+
+test('cypher query params accept modelId and it survives a JSON round trip', () =>
+{
+    const params: CypherQueryParams = {
+        cypher: CypherModelIdFixtures.Query,
+        modelId: CypherModelIdFixtures.ModelId
+    }
+    const back = JSON.parse(JSON.stringify(params)) as CypherQueryParams
+    assert.equal(back.modelId, CypherModelIdFixtures.ModelId)
+    assert.deepEqual(back, params)
+})
+
+test('protocol package version is 0.6.0', () =>
+{
+    const url = new URL(CypherModelIdFixtures.PackageJson, import.meta.url)
+    const pkg = JSON.parse(readFileSync(url, 'utf8')) as { version: string }
+    assert.equal(pkg.version, CypherModelIdFixtures.ExpectedVersion)
 })
