@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { AppWriteStatus } from '../../dto/wire-dtos.js'
 import type { CypherNodeCellDto, CypherQueryPageDto, CypherQueryParams } from '../../dto/wire-dtos.js'
 import { CypherProtocol } from '../cypher-protocol.js'
 
@@ -53,7 +54,7 @@ class CypherModelIdFixtures
 {
     public static readonly ModelId = 'x'
     public static readonly Query = 'MATCH (n) RETURN n'
-    public static readonly ExpectedVersion = '0.6.0'
+    public static readonly ExpectedVersion = '0.7.0'
     public static readonly PackageJson = '../../../package.json'
 }
 
@@ -68,9 +69,21 @@ test('cypher query params accept modelId and it survives a JSON round trip', () 
     assert.deepEqual(back, params)
 })
 
-test('protocol package version is 0.6.0', () =>
+test('protocol package version is 0.7.0', () =>
 {
     const url = new URL(CypherModelIdFixtures.PackageJson, import.meta.url)
     const pkg = JSON.parse(readFileSync(url, 'utf8')) as { version: string }
     assert.equal(pkg.version, CypherModelIdFixtures.ExpectedVersion)
+})
+
+test('cypher contract carries its execute wire method name', () =>
+{
+    assert.equal(CypherProtocol.Execute.method, 'cypher/execute')
+})
+
+test('app write status wire values are stable', () =>
+{
+    assert.deepEqual(
+        [AppWriteStatus.Applied, AppWriteStatus.Conflict, AppWriteStatus.Denied, AppWriteStatus.Invalid, AppWriteStatus.Failed],
+        ['applied', 'conflict', 'denied', 'invalid', 'failed'])
 })

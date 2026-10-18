@@ -562,6 +562,34 @@ export interface CypherQueryPageDto extends Page<CypherCellDto[]>
     truncated: boolean
 }
 
+export interface CypherExecuteParams
+{
+    cypher: string
+    parameters?: { [k: string]: CypherParamValue }
+    modelId?: string
+    expectedRevision?: number
+}
+
+export interface CypherWriteCountsDto
+{
+    nodesCreated: number
+    nodesDeleted: number
+    relationshipsCreated: number
+    relationshipsDeleted: number
+    propertiesSet: number
+}
+
+export interface CypherExecuteResultDto
+{
+    status: AppWriteStatus
+    reason?: string
+    counts: CypherWriteCountsDto
+    revision: number
+    columns: string[]
+    rows: CypherCellDto[][]
+    truncated: boolean
+}
+
 export interface PragmaticAppSummaryDto
 {
     name: string
