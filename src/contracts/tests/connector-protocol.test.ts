@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ConnectorProtocol } from '../connector-protocol.js'
 import { AppWriteStatus } from '../../dto/wire-dtos.js'
-import type { WriteResultDto } from '../../dto/wire-dtos.js'
+import type { WriteResultDto, ConnectorRefreshOutcomeDto } from '../../dto/wire-dtos.js'
 
 test('ConnectorProtocol method strings are stable and namespaced', () =>
 {
@@ -32,4 +32,23 @@ test('WriteResultDto failures round-trip through JSON for every kind', () =>
 test('AppWriteStatus.Failed is stable', () =>
 {
     assert.equal(AppWriteStatus.Failed, 'failed')
+})
+
+test('ConnectorProtocol.RefreshModel method string is connector/refreshModel', () =>
+{
+    assert.equal(ConnectorProtocol.RefreshModel.method, 'connector/refreshModel')
+})
+
+test('the existing connector/refresh method string is unchanged', () =>
+{
+    assert.equal(ConnectorProtocol.Refresh.method, 'connector/refresh')
+})
+
+test('ConnectorRefreshOutcomeDto round-trips through JSON', () =>
+{
+    const outcome: ConnectorRefreshOutcomeDto = {
+        diagnostics: [{ code: 'connector.refresh-dropped', message: 'x' }],
+    }
+    const back = JSON.parse(JSON.stringify(outcome)) as ConnectorRefreshOutcomeDto
+    assert.deepEqual(back, outcome)
 })

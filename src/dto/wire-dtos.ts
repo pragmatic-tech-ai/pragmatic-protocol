@@ -226,6 +226,16 @@ export interface FlushOutcomeDto
     diagnostics: DiagnosticDto[]
 }
 
+export interface ConnectorRefreshModelParams
+{
+    modelId: string
+}
+
+export interface ConnectorRefreshOutcomeDto
+{
+    diagnostics: DiagnosticDto[]
+}
+
 export interface GrantDto
 {
     subject: string
