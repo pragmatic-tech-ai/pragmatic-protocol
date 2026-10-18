@@ -362,17 +362,17 @@ export class PragmaticClient
         return this.Request(ModelProtocol.ModelView, { memberId, ...page })
     }
 
-    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }, page?: PageParams): Promise<CypherQueryPageDto>
+    public CypherQuery(cypher: string, parameters?: { [k: string]: CypherParamValue }, page?: PageParams, modelId?: string): Promise<CypherQueryPageDto>
     {
-        return this.Request(CypherProtocol.Query, { cypher, parameters, ...page })
+        return this.Request(CypherProtocol.Query, { cypher, parameters, modelId, ...page })
     }
 
-    public async *QueryAll(cypher: string, parameters?: { [k: string]: CypherParamValue }, pageSize?: number): AsyncIterable<CypherQueryPageDto>
+    public async *QueryAll(cypher: string, parameters?: { [k: string]: CypherParamValue }, pageSize?: number, modelId?: string): AsyncIterable<CypherQueryPageDto>
     {
         let cursor: string | undefined
         do
         {
-            const page: CypherQueryPageDto = await this.CypherQuery(cypher, parameters, { cursor, pageSize })
+            const page: CypherQueryPageDto = await this.CypherQuery(cypher, parameters, { cursor, pageSize }, modelId)
             yield page
             cursor = page.nextCursor
         }

@@ -95,6 +95,28 @@ test('QueryAll walks every page by cursor', async () =>
     await h.Close()
 })
 
+test('QueryAll carries modelId on every page request', async () =>
+{
+    const h = new PagingHarness()
+    const modelIds: Array<string | undefined> = []
+    const replies = [
+        { columns: ['a'], items: [[1]], truncated: false, nextCursor: 'c1' },
+        { columns: ['a'], items: [[2]], truncated: false },
+    ]
+    h.server.onRequest(CypherProtocol.Query, params =>
+    {
+        modelIds.push(params.modelId)
+        return replies[modelIds.length - 1]!
+    })
+    h.server.listen()
+    for await (const _ of h.client.QueryAll('MATCH (n) RETURN n', undefined, undefined, 'm1'))
+    {
+        // drain
+    }
+    assert.deepEqual(modelIds, ['m1', 'm1'])
+    await h.Close()
+})
+
 test('ReadAll and ModelViewAll forward pageSize', async () =>
 {
     const h = new PagingHarness()

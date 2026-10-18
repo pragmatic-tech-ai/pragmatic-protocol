@@ -63,3 +63,23 @@ test('client CypherQuery sends the query and receives the result DTO', async () 
     await client.DisposeAsync()
     server.dispose()
 })
+
+test('client CypherQuery carries modelId', async () =>
+{
+    const stub: CypherQueryPageDto = { columns: ['a.name'], items: [['Alice'], ['Bob']], truncated: false }
+    const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
+    const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
+    let received: unknown
+    server.onRequest(CypherProtocol.Query, params =>
+    {
+        received = params
+        return stub
+    })
+    server.listen()
+    const client = PragmaticClient.CreateOverSocket(clientSocket)
+    const result = await client.CypherQuery('MATCH (a) RETURN a.name', undefined, undefined, 'm1')
+    assert.deepEqual(result, stub)
+    assert.deepEqual(received, { cypher: 'MATCH (a) RETURN a.name', modelId: 'm1' })
+    await client.DisposeAsync()
+    server.dispose()
+})
