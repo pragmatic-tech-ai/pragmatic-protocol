@@ -45,7 +45,7 @@ test('deploy DTOs round-trip their fields', () =>
 {
     const params = DeployFixtures.Params()
     const result: AppDeployResultDto = { status: AppWriteStatus.Applied, appName: params.appName, appVersion: params.appVersion }
-    const copy = JSON.parse(JSON.stringify({ params, result }))
+    const copy = JSON.parse(JSON.stringify({ params, result })) as { params: CypherAppDeployParamsDto; result: AppDeployResultDto }
     assert.deepEqual(copy.params, params)
     assert.deepEqual(copy.result, result)
     assert.equal(copy.params.manifest.ui.entry, 'index.html')
@@ -63,10 +63,16 @@ test('client DeployApplication sends application/deploy with the given params', 
     })
     server.listen()
     const client = PragmaticClient.CreateOverSocket(clientSocket)
-    const result = await client.DeployApplication(DeployFixtures.Params())
-    assert.deepEqual(seen, DeployFixtures.Params())
-    assert.equal(result.status, AppWriteStatus.Applied)
-    assert.equal(result.appName, DeployFixtures.AppName)
-    await client.DisposeAsync()
-    server.dispose()
+    try
+    {
+        const result = await client.DeployApplication(DeployFixtures.Params())
+        assert.deepEqual(seen, DeployFixtures.Params())
+        assert.equal(result.status, AppWriteStatus.Applied)
+        assert.equal(result.appName, DeployFixtures.AppName)
+    }
+    finally
+    {
+        await client.DisposeAsync()
+        server.dispose()
+    }
 })
