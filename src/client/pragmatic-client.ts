@@ -48,7 +48,7 @@ export interface ReconnectingOptions
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket); optionally auto-reconnecting over a dialer. */
 export class PragmaticClient
 {
-    private static readonly NodeOnlyError = 'Node-only connect: ConnectAsync is unavailable in this entry; use ConnectReconnecting with a BrowserSocketDialer'
+    private static readonly NodeOnlyError = 'Node-only connect: ConnectAsync is unavailable in this entry; use ConnectReconnecting with a BrowserSocketDialer, or import the package root (@pragmatic-tech-ai/pragmatic-protocol), which installs the Node dialer; deep imports of dist/client/* are unsupported'
     private static nodeDialerFactory: INodeDialerFactory | undefined
     private static readonly DefaultReconnect: ReconnectPolicy = { initialDelayMs: 500, factor: 2, maxDelayMs: 30000 }
     private static readonly DefaultReadIdleMs = 60000

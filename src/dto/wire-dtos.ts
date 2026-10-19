@@ -738,6 +738,7 @@ export interface AssignResultDto
     reason?: string
 }
 
+/** Descriptor of a servable app. Authority: the server validates CypherAppDeployParamsDto.packages as the authoritative deployable closure; manifest.packages must correspond to it. */
 export interface ServableAppManifestDto
 {
     name: string
@@ -746,6 +747,7 @@ export interface ServableAppManifestDto
     ui: { entry: string; assets: string[] }
 }
 
+/** Deploy request. Authority: the server validates `packages` as the authoritative deployable closure; `manifest.packages` must correspond to it. */
 export interface CypherAppDeployParamsDto
 {
     appName: string
@@ -755,6 +757,7 @@ export interface CypherAppDeployParamsDto
     manifest: ServableAppManifestDto
 }
 
+/** Deploy outcome. Error channel: validation outcomes travel in-band as `status` (+ optional `reason`, which must stay secret-free); protocol/transport failures travel as a JSON-RPC ResponseError. */
 export interface AppDeployResultDto
 {
     status: AppWriteStatus

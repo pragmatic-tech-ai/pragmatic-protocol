@@ -13,6 +13,7 @@ class DeployFixtures
 {
     public static readonly AppName = 'orders'
     public static readonly AppVersion = '1.2.3'
+    public static readonly FailureReason = 'manifest packages do not match the deploy closure'
 
     public static Manifest(): ServableAppManifestDto
     {
@@ -49,6 +50,18 @@ test('deploy DTOs round-trip their fields', () =>
     assert.deepEqual(copy.params, params)
     assert.deepEqual(copy.result, result)
     assert.equal(copy.params.manifest.ui.entry, 'index.html')
+})
+
+test('deploy failure results round-trip in-band with a plain-string reason', () =>
+{
+    for (const status of [AppWriteStatus.Invalid, AppWriteStatus.Conflict])
+    {
+        const result: AppDeployResultDto = { status, reason: DeployFixtures.FailureReason, appName: DeployFixtures.AppName, appVersion: DeployFixtures.AppVersion }
+        const copy = JSON.parse(JSON.stringify(result)) as AppDeployResultDto
+        assert.deepEqual(copy, result)
+        assert.equal(copy.status, status)
+        assert.equal(typeof copy.reason, 'string')
+    }
 })
 
 test('client DeployApplication sends application/deploy with the given params', async () =>

@@ -27,12 +27,12 @@ class FakeBrowserWebSocket
             if (FakeBrowserWebSocket.FailOpen)
             {
                 this.readyState = 3
-                this.Emit('error', {})
-                this.Emit('close', {})
+                this.Emit(Fixtures.ErrorEvent, {})
+                this.Emit(Fixtures.CloseEvent, {})
                 return
             }
             this.readyState = 1
-            this.Emit('open', {})
+            this.Emit(Fixtures.OpenEvent, {})
         })
     }
 
@@ -84,7 +84,17 @@ class GlobalWebSocketScope
     }
 }
 
-const SecretMarker = 'S3CR3T-TOKEN'
+class Fixtures
+{
+    public static readonly SecretMarker = 'S3CR3T-TOKEN'
+    public static readonly OpenEvent = 'open'
+    public static readonly CloseEvent = 'close'
+    public static readonly ErrorEvent = 'error'
+    public static readonly MessageEvent = 'message'
+    public static readonly TenantUrl = 'wss://tenant.example/ws'
+    public static readonly ShortUrl = 'wss://t/ws'
+    public static readonly TokenQuery = '?token='
+}
 
 test('dialer opens over the global WebSocket with the bare URL and no auth material', async () =>
 {
@@ -92,9 +102,9 @@ test('dialer opens over the global WebSocket with the bare URL and no auth mater
     scope.Install()
     try
     {
-        const socket = await new BrowserSocketDialer('wss://tenant.example/ws').Dial()
+        const socket = await new BrowserSocketDialer(Fixtures.TenantUrl).Dial()
         assert.ok(socket instanceof BrowserWebSocketMessageSocket)
-        assert.deepEqual(FakeBrowserWebSocket.Instances[0].constructorArgs, ['wss://tenant.example/ws'])
+        assert.deepEqual(FakeBrowserWebSocket.Instances[0].constructorArgs, [Fixtures.TenantUrl])
     }
     finally { scope.Restore() }
 })
@@ -105,13 +115,13 @@ test('socket sends a frame and receives a reply', async () =>
     scope.Install()
     try
     {
-        const socket = await new BrowserSocketDialer('wss://t/ws').Dial()
+        const socket = await new BrowserSocketDialer(Fixtures.ShortUrl).Dial()
         const fake = FakeBrowserWebSocket.Instances[0]
         const received: string[] = []
         socket.OnMessage(json => received.push(json))
         await socket.Send('{"a":1}')
         assert.deepEqual(fake.sent, ['{"a":1}'])
-        fake.Emit('message', { data: '{"reply":true}' })
+        fake.Emit(Fixtures.MessageEvent, { data: '{"reply":true}' })
         assert.deepEqual(received, ['{"reply":true}'])
     }
     finally { scope.Restore() }
@@ -125,8 +135,8 @@ test('open failure rejects with a clear error free of the URL/secret', async () 
     try
     {
         await assert.rejects(
-            new BrowserSocketDialer('wss://t/ws?token=' + SecretMarker).Dial(),
-            (error: Error) => error.message.length > 0 && !error.message.includes(SecretMarker) && /failed to open/.test(error.message))
+            new BrowserSocketDialer(Fixtures.ShortUrl + Fixtures.TokenQuery + Fixtures.SecretMarker).Dial(),
+            (error: Error) => error.message.length > 0 && !error.message.includes(Fixtures.SecretMarker) && /failed to open/.test(error.message))
         assert.ok(FakeBrowserWebSocket.Instances[0].closeCalls >= 1)
     }
     finally { scope.Restore() }
@@ -138,14 +148,14 @@ test('a mid-stream close rejects a pending call instead of hanging', async () =>
     scope.Install()
     try
     {
-        const client = await PragmaticClient.ConnectReconnecting(new BrowserSocketDialer('wss://t/ws'), { schedule: () => {} })
+        const client = await PragmaticClient.ConnectReconnecting(new BrowserSocketDialer(Fixtures.ShortUrl), { schedule: () => {} })
         const fake = FakeBrowserWebSocket.Instances[0]
         const pending = client.ListApplications()
         await new Promise(resolve => setImmediate(resolve))
         assert.equal(fake.sent.length, 1)
         fake.readyState = 3
-        fake.Emit('close', {})
-        await assert.rejects(pending, (error: Error) => error instanceof ConnectionLostError && error.message.length > 0 && !error.message.includes(SecretMarker))
+        fake.Emit(Fixtures.CloseEvent, {})
+        await assert.rejects(pending, (error: Error) => error instanceof ConnectionLostError && error.message.length > 0 && !error.message.includes(Fixtures.SecretMarker))
     }
     finally { scope.Restore() }
 })
@@ -164,7 +174,7 @@ test('dial without a global WebSocket rejects with a clear unavailable error', a
     scope.Assign(undefined)
     try
     {
-        await assert.rejects(new BrowserSocketDialer('wss://t/ws').Dial(), /WebSocket is not available/)
+        await assert.rejects(new BrowserSocketDialer(Fixtures.ShortUrl).Dial(), /WebSocket is not available/)
     }
     finally { scope.Restore() }
 })
@@ -177,8 +187,8 @@ test('OnError and OnClose forward socket events', () =>
     let closed = 0
     socket.OnError(error => errors.push(error))
     socket.OnClose(() => { closed++ })
-    fake.Emit('error', {})
-    fake.Emit('close', {})
+    fake.Emit(Fixtures.ErrorEvent, {})
+    fake.Emit(Fixtures.CloseEvent, {})
     assert.equal(errors.length, 1)
     assert.ok(errors[0] instanceof Error && errors[0].message.length > 0)
     assert.equal(closed, 1)
@@ -190,8 +200,8 @@ test('non-text frames are dropped, text frames delivered', () =>
     const socket = new BrowserWebSocketMessageSocket(fake)
     const received: string[] = []
     socket.OnMessage(json => received.push(json))
-    fake.Emit('message', { data: new ArrayBuffer(4) })
-    fake.Emit('message', { data: 'ok' })
+    fake.Emit(Fixtures.MessageEvent, { data: new ArrayBuffer(4) })
+    fake.Emit(Fixtures.MessageEvent, { data: 'ok' })
     assert.deepEqual(received, ['ok'])
 })
 

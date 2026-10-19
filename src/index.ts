@@ -40,4 +40,5 @@ export { BrowserWebSocketMessageSocket } from './transport/browser-websocket-mes
 export type { IBrowserWebSocket, BrowserWebSocketEvent } from './transport/browser-websocket-message-socket.js'
 export { BrowserSocketDialer } from './client/browser-socket-dialer.js'
 
+// Wires the Node dialer into PragmaticClient.ConnectAsync: this barrel is the package's Node entry seam (static import, so no dynamic-import bundler break).
 NodeClientWiring.Install()
