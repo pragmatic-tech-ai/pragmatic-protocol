@@ -11,9 +11,9 @@ class SecurityModelContractFixture
             securityModel: {
                 businessUnits: [],
                 teams: [],
-                membership: {} as never,
+                membership: { claimsMapping: [], overrides: [] },
                 ownershipRules: [],
-                roles: [{ id: 'r1', name: 'Editor', privileges: [] }],
+                roles: [{ id: 'r1', name: 'Editor', privileges: [{ action: 'read', concept: 'Order', level: 'organization' }] }],
                 roleAssignment: { claimsMapping: [], overrides: [], teamRoles: [] }
             }
         }
@@ -31,4 +31,6 @@ test('SetSecurityModelParams carries roles and roleAssignment', () =>
     const params = SecurityModelContractFixture.Params()
     assert.equal(params.securityModel.roles?.length, 1)
     assert.ok(params.securityModel.roleAssignment)
+    assert.deepEqual(params.securityModel.roles?.[0].privileges[0], { action: 'read', concept: 'Order', level: 'organization' })
+    assert.deepEqual(params.securityModel.membership, { claimsMapping: [], overrides: [] })
 })
