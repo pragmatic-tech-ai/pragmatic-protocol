@@ -737,3 +737,28 @@ export interface AssignResultDto
     status: AssignStatus
     reason?: string
 }
+
+export interface ServableAppManifestDto
+{
+    name: string
+    version: string
+    packages: { id: string; version: string }[]
+    ui: { entry: string; assets: string[] }
+}
+
+export interface CypherAppDeployParamsDto
+{
+    appName: string
+    appVersion: string
+    packages: { id: string; version: string; modelJson: string }[]
+    uiBundle: { path: string; contentBase64: string }[]
+    manifest: ServableAppManifestDto
+}
+
+export interface AppDeployResultDto
+{
+    status: AppWriteStatus
+    reason?: string
+    appName: string
+    appVersion: string
+}

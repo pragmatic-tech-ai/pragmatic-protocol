@@ -19,6 +19,7 @@ import { ModelProtocol } from '../contracts/model-protocol.js'
 import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
+import { ApplicationDeployProtocol } from '../contracts/pragmatic-app-deploy-protocol.js'
 import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
@@ -26,7 +27,7 @@ import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
-    AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams,
+    AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -375,6 +376,11 @@ export class PragmaticClient
     public CypherExecute(cypher: string, parameters?: { [k: string]: CypherParamValue }, modelId?: string, expectedRevision?: number): Promise<CypherExecuteResultDto>
     {
         return this.Request(CypherProtocol.Execute, { cypher, parameters, modelId, expectedRevision })
+    }
+
+    public DeployApplication(params: CypherAppDeployParamsDto): Promise<AppDeployResultDto>
+    {
+        return this.Request(ApplicationDeployProtocol.Deploy, params)
     }
 
     public async *ReadAll(modelId: string, concept: string, pageSize?: number): AsyncIterable<Page<EntityDto>>

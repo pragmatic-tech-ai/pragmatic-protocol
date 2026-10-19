@@ -69,7 +69,7 @@ test('cypher query params accept modelId and it survives a JSON round trip', () 
     assert.deepEqual(back, params)
 })
 
-test('protocol package version is 0.7.0', () =>
+test('protocol package version is 0.8.0', () =>
 {
     const url = new URL(CypherModelIdFixtures.PackageJson, import.meta.url)
     const pkg = JSON.parse(readFileSync(url, 'utf8')) as { version: string }
