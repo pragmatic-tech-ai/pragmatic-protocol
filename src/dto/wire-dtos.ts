@@ -446,6 +446,11 @@ export interface SecurityModelDto
     fieldSecurity?: FieldSecurityDto
 }
 
+export interface SetSecurityModelParams
+{
+    securityModel: SecurityModelDto
+}
+
 export interface IdentityConfigDto
 {
     packId: string
