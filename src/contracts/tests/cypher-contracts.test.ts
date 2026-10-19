@@ -54,7 +54,7 @@ class CypherModelIdFixtures
 {
     public static readonly ModelId = 'x'
     public static readonly Query = 'MATCH (n) RETURN n'
-    public static readonly ExpectedVersion = '0.7.0'
+    public static readonly ExpectedVersion = '0.8.0'
     public static readonly PackageJson = '../../../package.json'
 }
 
