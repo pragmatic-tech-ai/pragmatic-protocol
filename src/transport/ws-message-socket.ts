@@ -17,6 +17,7 @@ export class WsMessageSocket implements IMessageSocket
 {
     private static readonly NotOpenError = 'web socket is not open'
     private static readonly ShedError = 'web socket shed: outbound buffer over the hard limit'
+    private static readonly Decoder = new TextDecoder()
 
     private readonly ws: WebSocket
     private readonly policy: BackpressurePolicy | undefined
@@ -106,16 +107,15 @@ export class WsMessageSocket implements IMessageSocket
         {
             return data
         }
-        const decoder = new TextDecoder()
         if (Array.isArray(data))
         {
-            return decoder.decode(WsMessageSocket.Concat(data))
+            return WsMessageSocket.Decoder.decode(WsMessageSocket.Concat(data))
         }
         if (data instanceof ArrayBuffer)
         {
-            return decoder.decode(new Uint8Array(data))
+            return WsMessageSocket.Decoder.decode(new Uint8Array(data))
         }
-        return decoder.decode(data as Uint8Array)
+        return WsMessageSocket.Decoder.decode(data as Uint8Array)
     }
 
     private static Concat(chunks: Uint8Array[]): Uint8Array

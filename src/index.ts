@@ -1,3 +1,4 @@
+import { NodeClientWiring } from './client/node-client-wiring.js'
 export * from './dto/wire-dtos.js'
 export { CursorStaleError } from './dto/wire-errors.js'
 export { PageCursorCodec } from './paging/page-cursor-codec.js'
@@ -19,6 +20,8 @@ export { WebSocketMessageWriter } from './transport/web-socket-message-writer.js
 export { WsMessageSocket } from './transport/ws-message-socket.js'
 export { TransportCloseCode, ConnectionLostError, DrainingError } from './transport/transport-signals.js'
 export { PragmaticClient } from './client/pragmatic-client.js'
+export { NodeClientWiring } from './client/node-client-wiring.js'
+export type { INodeDialerFactory } from './client/i-socket-dialer.js'
 export { createMessageConnection, NullLogger, ResponseError, ErrorCodes } from 'vscode-jsonrpc'
 export type { MessageConnection, Disposable, RequestType, NotificationType } from 'vscode-jsonrpc'
 export { HeartbeatMonitor } from './transport/heartbeat-monitor.js'
@@ -33,5 +36,7 @@ export type { ReconnectPolicy } from './client/reconnect-policy.js'
 export type { ReconnectingOptions } from './client/pragmatic-client.js'
 export { Emitter } from 'vscode-jsonrpc'
 export { BrowserWebSocketMessageSocket } from './transport/browser-websocket-message-socket.js'
-export type { IBrowserWebSocket } from './transport/browser-websocket-message-socket.js'
-export { BrowserSocketDialer } from './transport/browser-socket-dialer.js'
+export type { IBrowserWebSocket, BrowserWebSocketEvent } from './transport/browser-websocket-message-socket.js'
+export { BrowserSocketDialer } from './client/browser-socket-dialer.js'
+
+NodeClientWiring.Install()

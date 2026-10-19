@@ -1,25 +1,32 @@
 import type { IMessageSocket } from './message-socket.js'
 
+/** The only event field this adapter reads. */
+export interface BrowserWebSocketEvent
+{
+    data?: unknown
+}
+
 /** Structural slice of the DOM WebSocket this adapter needs, so no DOM lib or Node ws is required. */
 export interface IBrowserWebSocket
 {
     readonly readyState: number
     send(data: string): void
-    close(code?: number): void
-    addEventListener(type: string, listener: (event: any) => void): void
+    close(): void
+    addEventListener(type: string, listener: (event: BrowserWebSocketEvent) => void): void
 }
 
 /** Adapts a browser (global) WebSocket to IMessageSocket: text frames in/out, readyState-guarded sends. */
 export class BrowserWebSocketMessageSocket implements IMessageSocket
 {
     public static readonly OpenState = 1
+    public static readonly OpenEvent = 'open'
 
     private static readonly NotOpenError = 'web socket is not open'
     private static readonly SendFailedError = 'web socket send failed'
     private static readonly SocketError = 'web socket error'
-    private static readonly MessageEvent = 'message'
-    private static readonly ErrorEvent = 'error'
-    private static readonly CloseEvent = 'close'
+    public static readonly MessageEvent = 'message'
+    public static readonly ErrorEvent = 'error'
+    public static readonly CloseEvent = 'close'
 
     private readonly ws: IBrowserWebSocket
 
@@ -49,6 +56,7 @@ export class BrowserWebSocketMessageSocket implements IMessageSocket
     {
         this.ws.addEventListener(BrowserWebSocketMessageSocket.MessageEvent, event =>
         {
+            // Non-text (binary) frames are dropped: the wire protocol is JSON text only, so a binary frame is never valid input.
             if (typeof event.data === 'string')
             {
                 handler(event.data)

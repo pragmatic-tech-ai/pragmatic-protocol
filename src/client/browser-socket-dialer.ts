@@ -1,7 +1,7 @@
-import type { IMessageSocket } from './message-socket.js'
+import type { IMessageSocket } from '../transport/message-socket.js'
 import { BrowserWebSocketMessageSocket } from '../transport/browser-websocket-message-socket.js'
 import type { IBrowserWebSocket } from '../transport/browser-websocket-message-socket.js'
-import type { ISocketDialer } from '../client/i-socket-dialer.js'
+import type { ISocketDialer } from './i-socket-dialer.js'
 
 type BrowserWebSocketConstructor = new (url: string) => IBrowserWebSocket
 
@@ -10,9 +10,6 @@ export class BrowserSocketDialer implements ISocketDialer
 {
     private static readonly UnavailableError = 'global WebSocket is not available in this environment'
     private static readonly OpenFailedError = 'browser web socket failed to open'
-    private static readonly OpenEvent = 'open'
-    private static readonly ErrorEvent = 'error'
-    private static readonly CloseEvent = 'close'
 
     private readonly url: string
 
@@ -21,6 +18,7 @@ export class BrowserSocketDialer implements ISocketDialer
         this.url = url
     }
 
+    // deferred: backpressure — see Project Feature
     public async Dial(): Promise<IMessageSocket>
     {
         const ctor = (globalThis as { WebSocket?: BrowserWebSocketConstructor }).WebSocket
@@ -32,7 +30,7 @@ export class BrowserSocketDialer implements ISocketDialer
         await new Promise<void>((resolve, reject) =>
         {
             let settled = false
-            ws.addEventListener(BrowserSocketDialer.OpenEvent, () =>
+            ws.addEventListener(BrowserWebSocketMessageSocket.OpenEvent, () =>
             {
                 settled = true
                 resolve()
@@ -54,8 +52,8 @@ export class BrowserSocketDialer implements ISocketDialer
                 }
                 reject(new Error(BrowserSocketDialer.OpenFailedError))
             }
-            ws.addEventListener(BrowserSocketDialer.ErrorEvent, fail)
-            ws.addEventListener(BrowserSocketDialer.CloseEvent, fail)
+            ws.addEventListener(BrowserWebSocketMessageSocket.ErrorEvent, fail)
+            ws.addEventListener(BrowserWebSocketMessageSocket.CloseEvent, fail)
         })
         return new BrowserWebSocketMessageSocket(ws)
     }

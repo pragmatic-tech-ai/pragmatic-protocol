@@ -12,7 +12,7 @@ import { ConnectionLostError } from '../transport/transport-signals.js'
 import { ConnectionState } from './connection-state.js'
 import { ReconnectBackoff } from './reconnect-policy.js'
 import type { ReconnectPolicy } from './reconnect-policy.js'
-import type { ISocketDialer } from './i-socket-dialer.js'
+import type { INodeDialerFactory, ISocketDialer } from './i-socket-dialer.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
 import { ModelProtocol } from '../contracts/model-protocol.js'
@@ -47,7 +47,8 @@ export interface ReconnectingOptions
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket); optionally auto-reconnecting over a dialer. */
 export class PragmaticClient
 {
-    private static readonly NodeDialerModule = './socket-dialer.js'
+    private static readonly NodeOnlyError = 'Node-only connect: ConnectAsync is unavailable in this entry; use ConnectReconnecting with a BrowserSocketDialer'
+    private static nodeDialerFactory: INodeDialerFactory | undefined
     private static readonly DefaultReconnect: ReconnectPolicy = { initialDelayMs: 500, factor: 2, maxDelayMs: 30000 }
     private static readonly DefaultReadIdleMs = 60000
 
@@ -98,11 +99,20 @@ export class PragmaticClient
         return new PragmaticClient(connection, socket)
     }
 
-    /** Node-only: dials with the ws package, loaded lazily (specifier held in a constant) so browser bundles never pull it in. */
+    /** Installs the Node dialer factory; called by the Node entry (index.ts), never by the browser entry. */
+    public static UseNodeDialerFactory(factory: INodeDialerFactory): void
+    {
+        PragmaticClient.nodeDialerFactory = factory
+    }
+
+    /** Node-only connect (optional bearer). In a browser entry no factory is installed: use ConnectReconnecting with a BrowserSocketDialer. */
     public static async ConnectAsync(url: string, options: { bearerToken?: string } = {}): Promise<PragmaticClient>
     {
-        const module = await import(PragmaticClient.NodeDialerModule) as { WsSocketDialer: new (url: string, options: { bearerToken?: string }) => ISocketDialer }
-        return PragmaticClient.CreateOverSocket(await new module.WsSocketDialer(url, options).Dial())
+        if (PragmaticClient.nodeDialerFactory === undefined)
+        {
+            throw new Error(PragmaticClient.NodeOnlyError)
+        }
+        return PragmaticClient.CreateOverSocket(await PragmaticClient.nodeDialerFactory.Create(url, options).Dial())
     }
 
     public static async ConnectReconnecting(dialer: ISocketDialer, options: ReconnectingOptions = {}): Promise<PragmaticClient>
