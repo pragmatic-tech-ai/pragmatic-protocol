@@ -106,14 +106,28 @@ export class WsMessageSocket implements IMessageSocket
         {
             return data
         }
+        const decoder = new TextDecoder()
         if (Array.isArray(data))
         {
-            return Buffer.concat(data).toString('utf8')
+            return decoder.decode(WsMessageSocket.Concat(data))
         }
         if (data instanceof ArrayBuffer)
         {
-            return Buffer.from(data).toString('utf8')
+            return decoder.decode(new Uint8Array(data))
         }
-        return (data as Buffer).toString('utf8')
+        return decoder.decode(data as Uint8Array)
+    }
+
+    private static Concat(chunks: Uint8Array[]): Uint8Array
+    {
+        const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+        const joined = new Uint8Array(total)
+        let offset = 0
+        for (const chunk of chunks)
+        {
+            joined.set(chunk, offset)
+            offset += chunk.length
+        }
+        return joined
     }
 }

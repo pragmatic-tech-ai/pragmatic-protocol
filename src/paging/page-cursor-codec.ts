@@ -5,16 +5,31 @@ export interface PageCursor
     fingerprint: string
 }
 
-/** Encodes and decodes the opaque cursor strings carried by paged requests. */
+/** Encodes and decodes the opaque cursor strings carried by paged requests (base64url over UTF-8 JSON; browser-safe). */
 export class PageCursorCodec
 {
-    private static readonly Encoding = 'base64url'
-    private static readonly TextEncoding = 'utf8'
-
     public static Encode(cursor: PageCursor): string
     {
         const payload: PageCursor = { offset: cursor.offset, fingerprint: cursor.fingerprint }
-        return Buffer.from(JSON.stringify(payload)).toString(PageCursorCodec.Encoding)
+        const bytes = new TextEncoder().encode(JSON.stringify(payload))
+        let binary = ''
+        for (const byte of bytes)
+        {
+            binary += String.fromCharCode(byte)
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    }
+
+    private static DecodeBase64Url(text: string): string
+    {
+        const standard = text.replace(/-/g, '+').replace(/_/g, '/')
+        const binary = atob(standard + '='.repeat((4 - standard.length % 4) % 4))
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++)
+        {
+            bytes[i] = binary.charCodeAt(i)
+        }
+        return new TextDecoder().decode(bytes)
     }
 
     /** Returns undefined for anything that is not a well-formed cursor; never throws. */
@@ -26,7 +41,7 @@ export class PageCursorCodec
             {
                 return undefined
             }
-            const parsed: unknown = JSON.parse(Buffer.from(text, PageCursorCodec.Encoding).toString(PageCursorCodec.TextEncoding))
+            const parsed: unknown = JSON.parse(PageCursorCodec.DecodeBase64Url(text))
             if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))
             {
                 return undefined

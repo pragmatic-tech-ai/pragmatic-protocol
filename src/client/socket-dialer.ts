@@ -1,11 +1,7 @@
 import { WebSocket } from 'ws'
 import type { IMessageSocket } from '../transport/message-socket.js'
+import type { ISocketDialer } from './i-socket-dialer.js'
 import { WsMessageSocket } from '../transport/ws-message-socket.js'
-
-export interface ISocketDialer
-{
-    Dial(): Promise<IMessageSocket>
-}
 
 /** Dials a ws URL (optional bearer) and resolves a WsMessageSocket once the socket opens. */
 export class WsSocketDialer implements ISocketDialer
@@ -38,3 +34,6 @@ export class WsSocketDialer implements ISocketDialer
         return new WsMessageSocket(ws)
     }
 }
+
+
+export type { ISocketDialer } from './i-socket-dialer.js'

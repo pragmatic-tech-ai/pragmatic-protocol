@@ -1,6 +1,5 @@
 import { createMessageConnection, NullLogger, Emitter } from 'vscode-jsonrpc'
 import type { Disposable, Emitter as EmitterType, MessageConnection, RequestType, RequestType0, NotificationType } from 'vscode-jsonrpc'
-import { WebSocket } from 'ws'
 import type {
     CodeAction, CompletionItem, Diagnostic, DocumentSymbol, FoldingRange, Hover,
     Location, Position, Range, SemanticTokens, SignatureHelp, TextEdit, WorkspaceEdit, WorkspaceSymbol,
@@ -8,13 +7,12 @@ import type {
 import type { IMessageSocket } from '../transport/message-socket.js'
 import { WebSocketMessageReader } from '../transport/web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../transport/web-socket-message-writer.js'
-import { WsMessageSocket } from '../transport/ws-message-socket.js'
 import { MultiplexMessageSocket } from '../transport/multiplex-message-socket.js'
 import { ConnectionLostError } from '../transport/transport-signals.js'
 import { ConnectionState } from './connection-state.js'
 import { ReconnectBackoff } from './reconnect-policy.js'
 import type { ReconnectPolicy } from './reconnect-policy.js'
-import type { ISocketDialer } from './socket-dialer.js'
+import type { ISocketDialer } from './i-socket-dialer.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
 import { ModelProtocol } from '../contracts/model-protocol.js'
@@ -49,8 +47,7 @@ export interface ReconnectingOptions
 /** Typed JSON-RPC client over a WebSocket (or any IMessageSocket); optionally auto-reconnecting over a dialer. */
 export class PragmaticClient
 {
-    private static readonly AuthorizationHeader = 'Authorization'
-    private static readonly BearerPrefix = 'Bearer '
+    private static readonly NodeDialerModule = './socket-dialer.js'
     private static readonly DefaultReconnect: ReconnectPolicy = { initialDelayMs: 500, factor: 2, maxDelayMs: 30000 }
     private static readonly DefaultReadIdleMs = 60000
 
@@ -76,7 +73,7 @@ export class PragmaticClient
         this.socket = socket
         this.dialer = dialer
         this.backoff = backoff
-        this.schedule = options.schedule ?? ((ms, fn) => { const timer = setTimeout(fn, ms); timer.unref() })
+        this.schedule = options.schedule ?? ((ms, fn) => { const timer = setTimeout(fn, ms); (timer as { unref?: () => void }).unref?.() })
         this.now = options.now ?? (() => Date.now())
         this.readIdleMs = dialer === undefined ? undefined : (options.readIdleMs ?? PragmaticClient.DefaultReadIdleMs)
         this.lost = PragmaticClient.NewLost()
@@ -101,29 +98,11 @@ export class PragmaticClient
         return new PragmaticClient(connection, socket)
     }
 
+    /** Node-only: dials with the ws package, loaded lazily (specifier held in a constant) so browser bundles never pull it in. */
     public static async ConnectAsync(url: string, options: { bearerToken?: string } = {}): Promise<PragmaticClient>
     {
-        const socketOptions = options.bearerToken === undefined
-            ? undefined
-            : { headers: { [PragmaticClient.AuthorizationHeader]: PragmaticClient.BearerPrefix + options.bearerToken } }
-        const ws = new WebSocket(url, socketOptions)
-        await new Promise<void>((resolve, reject) =>
-        {
-            const onOpen = () =>
-            {
-                ws.off('error', onError)
-                resolve()
-            }
-            const onError = (error: Error) =>
-            {
-                ws.off('open', onOpen)
-                ws.close()
-                reject(error)
-            }
-            ws.once('open', onOpen)
-            ws.once('error', onError)
-        })
-        return PragmaticClient.CreateOverSocket(new WsMessageSocket(ws))
+        const module = await import(PragmaticClient.NodeDialerModule) as { WsSocketDialer: new (url: string, options: { bearerToken?: string }) => ISocketDialer }
+        return PragmaticClient.CreateOverSocket(await new module.WsSocketDialer(url, options).Dial())
     }
 
     public static async ConnectReconnecting(dialer: ISocketDialer, options: ReconnectingOptions = {}): Promise<PragmaticClient>
