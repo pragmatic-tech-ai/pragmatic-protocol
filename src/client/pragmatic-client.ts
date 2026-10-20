@@ -20,6 +20,7 @@ import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
 import { ApplicationDeployProtocol } from '../contracts/pragmatic-app-deploy-protocol.js'
+import { GraphProtocol } from '../contracts/graph-protocol.js'
 import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
@@ -28,6 +29,7 @@ import type {
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
+    GraphCreateParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -381,6 +383,26 @@ export class PragmaticClient
     public DeployApplication(params: CypherAppDeployParamsDto): Promise<AppDeployResultDto>
     {
         return this.Request(ApplicationDeployProtocol.Deploy, params)
+    }
+
+    public CreateGraph(params: GraphCreateParamsDto): Promise<GraphSummaryDto>
+    {
+        return this.Request(GraphProtocol.Create, params)
+    }
+
+    public ListGraphs(): Promise<GraphSummaryDto[]>
+    {
+        return this.RequestNoParams(GraphProtocol.List)
+    }
+
+    public GetGraph(params: GraphRefParamsDto): Promise<GraphDetailDto>
+    {
+        return this.Request(GraphProtocol.Get, params)
+    }
+
+    public DeleteGraph(params: GraphRefParamsDto): Promise<void>
+    {
+        return this.Request(GraphProtocol.Delete, params)
     }
 
     public async *ReadAll(modelId: string, concept: string, pageSize?: number): AsyncIterable<Page<EntityDto>>
