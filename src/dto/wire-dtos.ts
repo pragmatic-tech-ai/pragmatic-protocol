@@ -801,3 +801,19 @@ export interface GraphDetailDto
     packages: { id: string; version: string }[]
     createdAt: string
 }
+
+/** One package contributed to a graph: its id, version and compiled model JSON. */
+export interface ContributedPackageDto
+{
+    id: string
+    version: string
+    modelJson: string
+}
+
+/** Params for contributing a solution's packages into a named graph. */
+export interface GraphContributeParamsDto
+{
+    graphName: string
+    solutionId: string
+    packages: ContributedPackageDto[]
+}

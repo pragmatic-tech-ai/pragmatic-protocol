@@ -29,7 +29,7 @@ import type {
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
-    GraphCreateParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto,
+    GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -403,6 +403,11 @@ export class PragmaticClient
     public DeleteGraph(params: GraphRefParamsDto): Promise<void>
     {
         return this.Request(GraphProtocol.Delete, params)
+    }
+
+    public ContributeGraph(params: GraphContributeParamsDto): Promise<GraphDetailDto>
+    {
+        return this.Request(GraphProtocol.Contribute, params)
     }
 
     public async *ReadAll(modelId: string, concept: string, pageSize?: number): AsyncIterable<Page<EntityDto>>
