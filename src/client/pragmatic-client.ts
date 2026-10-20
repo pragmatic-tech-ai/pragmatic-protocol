@@ -29,7 +29,7 @@ import type {
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
-    GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto,
+    GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -408,6 +408,21 @@ export class PragmaticClient
     public ContributeGraph(params: GraphContributeParamsDto): Promise<GraphDetailDto>
     {
         return this.Request(GraphProtocol.Contribute, params)
+    }
+
+    public ExportGraph(params: GraphRefParamsDto): Promise<GraphExportDto>
+    {
+        return this.Request(GraphProtocol.Export, params)
+    }
+
+    public LoadGraph(params: GraphLoadParamsDto): Promise<GraphLoadedDto>
+    {
+        return this.Request(GraphProtocol.Load, params)
+    }
+
+    public GetLoadedGraph(): Promise<GraphLoadedDto | null>
+    {
+        return this.RequestNoParams(GraphProtocol.Loaded)
     }
 
     public async *ReadAll(modelId: string, concept: string, pageSize?: number): AsyncIterable<Page<EntityDto>>

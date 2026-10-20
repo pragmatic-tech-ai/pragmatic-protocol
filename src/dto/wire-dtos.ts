@@ -817,3 +817,25 @@ export interface GraphContributeParamsDto
     solutionId: string
     packages: ContributedPackageDto[]
 }
+
+/** A graph's effective package set including each package's compiled model JSON (for promotion). */
+export interface GraphExportDto
+{
+    name: string
+    packages: ContributedPackageDto[]
+}
+
+/** Params for loading a promoted graph's packages into a runtime container. */
+export interface GraphLoadParamsDto
+{
+    graphName: string
+    packages: ContributedPackageDto[]
+}
+
+/** A runtime's recorded loaded-graph manifest (package refs only, no content). */
+export interface GraphLoadedDto
+{
+    name: string
+    packages: { id: string; version: string }[]
+    promotedAt: string
+}
