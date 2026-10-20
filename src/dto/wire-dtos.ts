@@ -770,3 +770,34 @@ export interface AppDeployResultDto
     appName: string
     appVersion: string
 }
+
+/** Params for creating a named graph. */
+export interface GraphCreateParamsDto
+{
+    graphName: string
+    description: string
+}
+
+/** Params identifying an existing graph by name. */
+export interface GraphRefParamsDto
+{
+    graphName: string
+}
+
+/** Listing row for a graph. */
+export interface GraphSummaryDto
+{
+    name: string
+    description: string
+    packageCount: number
+    createdAt: string
+}
+
+/** Full graph description including its packages. */
+export interface GraphDetailDto
+{
+    name: string
+    description: string
+    packages: { id: string; version: string }[]
+    createdAt: string
+}
