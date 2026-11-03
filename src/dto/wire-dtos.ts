@@ -271,6 +271,28 @@ export interface ConnectorRefreshOutcomeDto
     diagnostics: DiagnosticDto[]
 }
 
+export interface ConnectorDecisionsParams
+{
+    modelId: string
+    /** Only the decisions for this merged (canonical) instance; all visible ones when omitted. */
+    canonical?: string
+}
+
+/** One merge-audit decision: which source supplied a merged instance's field value, and under which merge rule. */
+export interface ConnectorMergeDecisionDto
+{
+    /** The canonical (surviving) instance id the members merged into. */
+    canonical: string
+    /** The field whose value was decided. */
+    member: string
+    /** The winning source tag (`connector.source`), empty for a hand-authored value. */
+    source: string
+    /** The member instance whose value won. */
+    winningNode: string
+    /** The declared merge strategy that picked it (e.g. `source`, `latest`); absent for the default rule. */
+    strategy?: string
+}
+
 export interface GrantDto
 {
     subject: string

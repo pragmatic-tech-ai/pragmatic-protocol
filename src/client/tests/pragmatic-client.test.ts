@@ -7,6 +7,7 @@ import { WebSocketMessageWriter } from '../../transport/web-socket-message-write
 import { LanguageProtocol } from '../../contracts/language-protocol.js'
 import { SolutionProtocol } from '../../contracts/solution-protocol.js'
 import { CypherProtocol } from '../../contracts/cypher-protocol.js'
+import { ConnectorProtocol } from '../../contracts/connector-protocol.js'
 import { AppWriteStatus, BuildState } from '../../dto/wire-dtos.js'
 import type { CypherExecuteResultDto, CypherQueryPageDto } from '../../dto/wire-dtos.js'
 import { PragmaticClient } from '../pragmatic-client.js'
@@ -146,6 +147,25 @@ test('client CypherModels routes to cypher/models', async () =>
     server.listen()
     const client = PragmaticClient.CreateOverSocket(clientSocket)
     assert.deepEqual(await client.CypherModels(), { models: ['acme.aModel', 'acme.bModel'] })
+    await client.DisposeAsync()
+    server.dispose()
+})
+
+test('client ConnectorDecisions routes to connector/decisions, sending canonical only when given', async () =>
+{
+    const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
+    const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
+    const received: unknown[] = []
+    server.onRequest(ConnectorProtocol.Decisions, params =>
+    {
+        received.push(params)
+        return [{ canonical: 'c1', member: 'name', source: 'crm.people', winningNode: 'n1' }]
+    })
+    server.listen()
+    const client = PragmaticClient.CreateOverSocket(clientSocket)
+    assert.equal((await client.ConnectorDecisions('m')).length, 1)
+    await client.ConnectorDecisions('m', 'c1')
+    assert.deepEqual(received, [{ modelId: 'm' }, { modelId: 'm', canonical: 'c1' }])
     await client.DisposeAsync()
     server.dispose()
 })
