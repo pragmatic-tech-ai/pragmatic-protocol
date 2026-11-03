@@ -240,6 +240,8 @@ export interface ConnectorWriteOpResultDto
     key: string | number | boolean | null
     status: AppWriteStatus
     reason?: string
+    /** An applied optimistic upsert's new version (bumped by the server): the expectedVersion of the next write. */
+    version?: string | number | boolean | null
 }
 
 export interface ConnectorPagedWriteResultDto
