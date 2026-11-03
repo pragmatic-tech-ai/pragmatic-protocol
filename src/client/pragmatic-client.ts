@@ -26,7 +26,7 @@ import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
 import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
-    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, Page, PragmaticAppSummaryDto,
+    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, ConnectorMergeDecisionDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
@@ -543,6 +543,12 @@ export class PragmaticClient
     public TestConnection(modelId: string, connectorName: string): Promise<ConnectionProbeDto>
     {
         return this.Request(ConnectorProtocol.Test, { modelId, connectorName })
+    }
+
+    /** Which source supplied each merged instance's field values (optionally one canonical instance). */
+    public ConnectorDecisions(modelId: string, canonical?: string): Promise<ConnectorMergeDecisionDto[]>
+    {
+        return this.Request(ConnectorProtocol.Decisions, canonical === undefined ? { modelId } : { modelId, canonical })
     }
 
     public async DisposeAsync(): Promise<void>

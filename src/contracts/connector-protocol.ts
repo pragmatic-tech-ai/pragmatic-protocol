@@ -1,11 +1,13 @@
 import { RequestType, RequestType0 } from 'vscode-jsonrpc'
-import type { ConnectorModelDto, ConnectorPrepareParams, ConnectorReadParams, ConnectorWriteBackParams, ConnectorTestParams, EntityDto, Page, FlushOutcomeDto, ConnectionProbeDto, ConnectorRefreshModelParams, ConnectorRefreshOutcomeDto, ConnectorPagedWriteParams, ConnectorPagedWriteResultDto } from '../dto/wire-dtos.js'
+import type { ConnectorModelDto, ConnectorPrepareParams, ConnectorReadParams, ConnectorWriteBackParams, ConnectorTestParams, EntityDto, Page, FlushOutcomeDto, ConnectionProbeDto, ConnectorRefreshModelParams, ConnectorRefreshOutcomeDto, ConnectorPagedWriteParams, ConnectorPagedWriteResultDto, ConnectorDecisionsParams, ConnectorMergeDecisionDto } from '../dto/wire-dtos.js'
 
 /** JSON-RPC contracts for the connector surface: list/prepare/refresh/read/readPage/writeBack/writePaged/test over a solution's
  *  external-datasource connectors. Each method string lives only in its declaration. */
 export class ConnectorProtocol
 {
     public static readonly List = new RequestType0<ConnectorModelDto[], void>('connector/list')
+    /** The identity-resolution merge audit of one connector model, filtered to what the caller may read. */
+    public static readonly Decisions = new RequestType<ConnectorDecisionsParams, ConnectorMergeDecisionDto[], void>('connector/decisions')
     public static readonly Prepare = new RequestType<ConnectorPrepareParams, void, void>('connector/prepare')
     public static readonly Refresh = new RequestType0<void, void>('connector/refresh')
     public static readonly RefreshModel = new RequestType<ConnectorRefreshModelParams, ConnectorRefreshOutcomeDto, void>('connector/refreshModel')

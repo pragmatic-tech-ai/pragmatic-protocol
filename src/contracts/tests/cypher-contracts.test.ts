@@ -55,7 +55,7 @@ class CypherModelIdFixtures
 {
     public static readonly ModelId = 'x'
     public static readonly Query = 'MATCH (n) RETURN n'
-    public static readonly ExpectedVersion = '0.9.0'
+    public static readonly ExpectedVersion = '0.10.0'
     public static readonly PackageJson = '../../../package.json'
 }
 
@@ -70,7 +70,7 @@ test('cypher query params accept modelId and it survives a JSON round trip', () 
     assert.deepEqual(back, params)
 })
 
-test('protocol package version is 0.9.0', () =>
+test('protocol package version is 0.10.0', () =>
 {
     const url = new URL(CypherModelIdFixtures.PackageJson, import.meta.url)
     const pkg = JSON.parse(readFileSync(url, 'utf8')) as { version: string }
