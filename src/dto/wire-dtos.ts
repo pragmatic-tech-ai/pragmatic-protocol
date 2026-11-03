@@ -558,8 +558,21 @@ export interface CypherNodeCellDto
     iconKey?: string
 }
 
+/** A node cell: the node under the reserved `$node` key. A map whose sole key is `$node` or `$map` travels escaped as
+ *  `{ "$map": entries }`, so no map a query builds can pass for a node. Decode with CypherCells. */
+export interface CypherNodeCell
+{
+    $node: CypherNodeCellDto
+}
+
 // Mirrors CypherValueDto. The node member precedes the generic-object member.
-export type CypherCellDto = string | number | boolean | null | CypherNodeCellDto | CypherCellDto[] | { [k: string]: CypherCellDto }
+export type CypherCellDto = string | number | boolean | null | CypherNodeCell | CypherCellDto[] | { [k: string]: CypherCellDto }
+
+/** The model shard ids a principal may target with a model-scoped cypher/query or cypher/execute. */
+export interface CypherModelListDto
+{
+    models: string[]
+}
 
 export interface CypherQueryPageDto extends Page<CypherCellDto[]>
 {

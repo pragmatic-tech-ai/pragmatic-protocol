@@ -137,3 +137,15 @@ test('client CypherExecute drops omitted optionals from the wire payload', async
     await client.DisposeAsync()
     server.dispose()
 })
+
+test('client CypherModels routes to cypher/models', async () =>
+{
+    const [serverSocket, clientSocket] = InMemoryMessageSocket.Pair()
+    const server = createMessageConnection(new WebSocketMessageReader(serverSocket), new WebSocketMessageWriter(serverSocket), NullLogger)
+    server.onRequest(CypherProtocol.Models, () => ({ models: ['acme.aModel', 'acme.bModel'] }))
+    server.listen()
+    const client = PragmaticClient.CreateOverSocket(clientSocket)
+    assert.deepEqual(await client.CypherModels(), { models: ['acme.aModel', 'acme.bModel'] })
+    await client.DisposeAsync()
+    server.dispose()
+})
