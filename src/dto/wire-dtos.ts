@@ -185,6 +185,31 @@ export interface ConnectorReadParams extends PageParams
 {
     modelId: string
     concept: string
+    /** connector/readPage only: an AND of filter terms over the concept's MODEL members, applied at the source. */
+    where?: ConnectorFilterTermDto[]
+}
+
+/** Filter operator of a paged connector read (SQL semantics: a null field satisfies only isNull). */
+export enum ConnectorFilterOp
+{
+    Eq = 'eq',
+    Neq = 'neq',
+    Lt = 'lt',
+    Lte = 'lte',
+    Gt = 'gt',
+    Gte = 'gte',
+    In = 'in',
+    IsNull = 'isNull',
+    IsNotNull = 'isNotNull',
+}
+
+/** One filter term: `value` is the operand of eq..gte, `values` the set of in; isNull / isNotNull take neither. */
+export interface ConnectorFilterTermDto
+{
+    field: string
+    op: ConnectorFilterOp
+    value?: string | number | boolean | null
+    values?: (string | number | boolean | null)[]
 }
 
 export enum ConnectorWriteOp

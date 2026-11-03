@@ -26,7 +26,7 @@ import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
 import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
-    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, ConnectorMergeDecisionDto, Page, PragmaticAppSummaryDto,
+    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, ConnectorMergeDecisionDto, ConnectorFilterTermDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
@@ -533,6 +533,12 @@ export class PragmaticClient
     public ReadEntities(modelId: string, concept: string, page?: PageParams): Promise<Page<EntityDto>>
     {
         return this.Request(ConnectorProtocol.Read, { modelId, concept, ...page })
+    }
+
+    /** One keyset page of a connector concept read straight from its source, optionally filtered there by `where`. */
+    public ReadEntitiesPage(modelId: string, concept: string, page?: PageParams, where?: ConnectorFilterTermDto[]): Promise<Page<EntityDto>>
+    {
+        return this.Request(ConnectorProtocol.ReadPage, where === undefined ? { modelId, concept, ...page } : { modelId, concept, ...page, where })
     }
 
     public WriteBack(modelId: string, dirty: string[], deleted: string[]): Promise<FlushOutcomeDto>
