@@ -26,7 +26,7 @@ import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
 import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js'
 import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
-    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, Page, PragmaticAppSummaryDto,
+    ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, Page, PragmaticAppSummaryDto,
     AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
@@ -378,6 +378,12 @@ export class PragmaticClient
     public CypherExecute(cypher: string, parameters?: { [k: string]: CypherParamValue }, modelId?: string, expectedRevision?: number): Promise<CypherExecuteResultDto>
     {
         return this.Request(CypherProtocol.Execute, { cypher, parameters, modelId, expectedRevision })
+    }
+
+    /** The model shard ids this principal may pass as `modelId` to CypherQuery / CypherExecute. */
+    public CypherModels(): Promise<CypherModelListDto>
+    {
+        return this.RequestNoParams(CypherProtocol.Models)
     }
 
     public DeployApplication(params: CypherAppDeployParamsDto): Promise<AppDeployResultDto>

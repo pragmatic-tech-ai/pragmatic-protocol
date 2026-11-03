@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { AppWriteStatus } from '../../dto/wire-dtos.js'
 import type { CypherExecuteResultDto, CypherNodeCellDto, CypherQueryPageDto, CypherQueryParams } from '../../dto/wire-dtos.js'
 import { CypherProtocol } from '../cypher-protocol.js'
+import { CypherCells } from '../../dto/cypher-cells.js'
 
 class CypherContractFixtures
 {
@@ -33,7 +34,7 @@ class CypherContractFixtures
         }
         return {
             columns: [CypherContractFixtures.Column, CypherContractFixtures.CountColumn],
-            items: [[node, 3], [{ nested: [node] }, null]],
+            items: [[{ $node: node }, 3], [{ nested: [{ $node: node }] }, null]],
             truncated: false
         }
     }
@@ -54,7 +55,7 @@ class CypherModelIdFixtures
 {
     public static readonly ModelId = 'x'
     public static readonly Query = 'MATCH (n) RETURN n'
-    public static readonly ExpectedVersion = '0.8.0'
+    public static readonly ExpectedVersion = '0.9.0'
     public static readonly PackageJson = '../../../package.json'
 }
 
@@ -69,7 +70,7 @@ test('cypher query params accept modelId and it survives a JSON round trip', () 
     assert.deepEqual(back, params)
 })
 
-test('protocol package version is 0.8.0', () =>
+test('protocol package version is 0.9.0', () =>
 {
     const url = new URL(CypherModelIdFixtures.PackageJson, import.meta.url)
     const pkg = JSON.parse(readFileSync(url, 'utf8')) as { version: string }
@@ -106,4 +107,21 @@ test('cypher execute result survives a JSON round trip', () =>
         truncated: false
     }
     assert.deepEqual(JSON.parse(JSON.stringify(dto)), dto)
+})
+
+test('CypherCells tells a node cell from a map, including an escaped reserved-key map', () =>
+{
+    const page = CypherContractFixtures.Result()
+    assert.equal(CypherCells.AsNode(page.items[0][0])?.id, 'n1')
+    assert.equal(CypherCells.AsMap(page.items[0][0]), undefined)
+    assert.equal(CypherCells.AsNode({ id: 'n1', concept: 'C', label: 'L', fields: {}, refs: {} }), undefined)
+    assert.deepEqual(CypherCells.AsMap({ $map: { $node: 1 } }), { $node: 1 })
+    assert.equal(CypherCells.AsNode({ $map: { $node: 1 } }), undefined)
+    assert.deepEqual(CypherCells.AsMap({ $node: 1, b: 2 }), { $node: 1, b: 2 })
+    assert.equal(CypherCells.AsMap([1]), undefined)
+})
+
+test('cypher contract carries its models wire method name', () =>
+{
+    assert.equal(CypherProtocol.Models.method, 'cypher/models')
 })
