@@ -103,7 +103,7 @@ test('cypher execute result survives a JSON round trip', () =>
         counts: { nodesCreated: 1, nodesDeleted: 2, relationshipsCreated: 3, relationshipsDeleted: 4, propertiesSet: 5 },
         revision: 7,
         columns: ['n', 'cnt'],
-        rows: [[node, 3], [null, 0]],
+        rows: [[{ $node: node }, 3], [null, 0]],
         truncated: false
     }
     assert.deepEqual(JSON.parse(JSON.stringify(dto)), dto)

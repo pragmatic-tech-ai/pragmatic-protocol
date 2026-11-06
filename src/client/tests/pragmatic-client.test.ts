@@ -212,6 +212,8 @@ class RealWsFixture
     public static readonly RetiredCode = 4003
     public static readonly BodyCap = 4096
     public static readonly OverCapLength = 20000
+    public static readonly AsciiFiller = 'x'
+    public static readonly MultiByteChar = '€'
     public static readonly MissingBytes = 100
     public static readonly SettleMs = 100
 
@@ -374,7 +376,7 @@ test('a refused upgrade rejects with its status and body', async () =>
 
 test('a refused upgrade with an over-cap body keeps at most the cap and leaves no unhandled error', async () =>
 {
-    const server = new RefusingServer(RealWsFixture.RefusedStatus, 'x'.repeat(RealWsFixture.OverCapLength))
+    const server = new RefusingServer(RealWsFixture.RefusedStatus, RealWsFixture.AsciiFiller.repeat(RealWsFixture.OverCapLength))
     const url = await server.Start()
     const watch = new UnhandledWatch()
     watch.Arm()
@@ -383,8 +385,33 @@ test('a refused upgrade with an over-cap body keeps at most the cap and leaves n
         const error = await RealWsFixture.Connect(url).then(() => undefined, (caught: unknown) => caught)
         assert.ok(error instanceof UpgradeRefusedError)
         assert.equal(error.Status, RealWsFixture.RefusedStatus)
-        assert.ok(Buffer.byteLength(error.Body, 'utf8') <= RealWsFixture.BodyCap)
-        assert.ok(error.Body.length > 0)
+        assert.equal(error.Body, RealWsFixture.AsciiFiller.repeat(RealWsFixture.BodyCap))
+        assert.equal(error.Body.length, RealWsFixture.BodyCap)
+        await delay(RealWsFixture.SettleMs)
+        assert.deepEqual(watch.Seen, [])
+    }
+    finally
+    {
+        watch.Disarm()
+        await server.Stop()
+    }
+})
+
+test('a refused upgrade with a multi-byte character cut at the cap drops the cut character', async () =>
+{
+    // 4095 ASCII bytes, then a 3-byte character straddling the cap, then more bytes past it
+    const lead = RealWsFixture.AsciiFiller.repeat(RealWsFixture.BodyCap - 1)
+    const body = lead + RealWsFixture.MultiByteChar.repeat(RealWsFixture.OverCapLength)
+    const server = new RefusingServer(RealWsFixture.RefusedStatus, body)
+    const url = await server.Start()
+    const watch = new UnhandledWatch()
+    watch.Arm()
+    try
+    {
+        const error = await RealWsFixture.Connect(url).then(() => undefined, (caught: unknown) => caught)
+        assert.ok(error instanceof UpgradeRefusedError)
+        assert.ok(error.Body.length <= RealWsFixture.BodyCap)
+        assert.equal(error.Body, lead)
         await delay(RealWsFixture.SettleMs)
         assert.deepEqual(watch.Seen, [])
     }

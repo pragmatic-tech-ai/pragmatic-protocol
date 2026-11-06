@@ -35,7 +35,7 @@ export class WsSocketDialer implements ISocketDialer
 
 /**
  * One client handshake: resolves once the socket opens; rejects once on a transport error, or with
- * UpgradeRefusedError (status + at most BodyCap bytes of the answer) when the server answers a non-101.
+ * UpgradeRefusedError (status + at most BodyCap received bytes of the answer, decoded as UTF-8) when the server answers a non-101.
  */
 class WsHandshake
 {
@@ -141,7 +141,10 @@ class WsHandshake
         this.ws.terminate()
     }
 
-    /** Decodes the kept bytes as UTF-8; a multi-byte character cut at the cap is dropped, never replaced. */
+    /**
+     * Decodes the kept bytes (at most BodyCap received bytes) as UTF-8, so the Body is at most BodyCap characters.
+     * A multi-byte character cut at the cap is an incomplete tail, which a streaming decode holds back and never emits.
+     */
     private Body(): string
     {
         return new TextDecoder().decode(Buffer.concat(this.chunks, this.size), { stream: true })

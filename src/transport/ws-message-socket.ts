@@ -18,6 +18,9 @@ export class WsMessageSocket implements IMessageSocket
     private static readonly NotOpenError = 'web socket is not open'
     private static readonly ShedError = 'web socket shed: outbound buffer over the hard limit'
     private static readonly Decoder = new TextDecoder()
+    private static readonly MessageEvent = 'message'
+    private static readonly ErrorEvent = 'error'
+    private static readonly CloseEvent = 'close'
 
     private readonly ws: WebSocket
     private readonly policy: BackpressurePolicy | undefined
@@ -36,7 +39,7 @@ export class WsMessageSocket implements IMessageSocket
         this.onShed = options.onShed
         this.onSoft = options.onSoft
         // attached first, so the code is recorded before any OnClose handler runs
-        ws.on('close', (code: number) => { this.closeCode = code })
+        ws.on(WsMessageSocket.CloseEvent, (code: number) => { this.closeCode = code })
     }
 
     public Send(json: string): Promise<void>
@@ -86,17 +89,17 @@ export class WsMessageSocket implements IMessageSocket
 
     public OnMessage(handler: (json: string) => void): void
     {
-        this.ws.on('message', (data: RawData) => handler(WsMessageSocket.ToText(data)))
+        this.ws.on(WsMessageSocket.MessageEvent, (data: RawData) => handler(WsMessageSocket.ToText(data)))
     }
 
     public OnError(handler: (error: Error) => void): void
     {
-        this.ws.on('error', handler)
+        this.ws.on(WsMessageSocket.ErrorEvent, handler)
     }
 
     public OnClose(handler: () => void): void
     {
-        this.ws.on('close', handler)
+        this.ws.on(WsMessageSocket.CloseEvent, handler)
     }
 
     public Close(): void
