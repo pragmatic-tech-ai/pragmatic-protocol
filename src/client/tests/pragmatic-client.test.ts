@@ -1,6 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createMessageConnection, NullLogger } from 'vscode-jsonrpc'
+import { once } from 'node:events'
+import { createServer } from 'node:http'
+import type { Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
+import type { Duplex } from 'node:stream'
+import { setTimeout as delay } from 'node:timers/promises'
+import { WebSocketServer } from 'ws'
+import { ConnectionError, ConnectionErrors, createMessageConnection, NullLogger } from 'vscode-jsonrpc'
+import { ConnectionLostError, UpgradeRefusedError } from '../../transport/transport-signals.js'
+import { ConnectionState } from '../connection-state.js'
+import { NodeClientWiring } from '../node-client-wiring.js'
 import { InMemoryMessageSocket } from '../../transport/in-memory-message-socket.js'
 import { WebSocketMessageReader } from '../../transport/web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../../transport/web-socket-message-writer.js'
@@ -190,4 +200,271 @@ test('client ReadEntitiesPage routes to connector/readPage and carries where onl
     ])
     await client.DisposeAsync()
     server.dispose()
+})
+
+class RealWsFixture
+{
+    public static readonly Loopback = '127.0.0.1'
+    public static readonly RefusedStatus = 503
+    public static readonly RefusedBody = '{"error":"console-not-registered"}'
+    public static readonly RefusedError = 'console-not-registered'
+    public static readonly RefusedMessage = 'Unexpected server response: 503'
+    public static readonly RetiredCode = 4003
+    public static readonly BodyCap = 4096
+    public static readonly OverCapLength = 20000
+    public static readonly MissingBytes = 100
+    public static readonly SettleMs = 100
+
+    public static Url(address: AddressInfo): string
+    {
+        return `ws://${RealWsFixture.Loopback}:${address.port}`
+    }
+
+    public static Connect(url: string): Promise<PragmaticClient>
+    {
+        NodeClientWiring.Install()
+        return PragmaticClient.ConnectAsync(url)
+    }
+
+    public static async UntilClosed(client: PragmaticClient): Promise<void>
+    {
+        if (client.State() === ConnectionState.Closed)
+        {
+            return
+        }
+        await new Promise<void>(resolve =>
+        {
+            const watch = client.OnStateChanged(state =>
+            {
+                if (state === ConnectionState.Closed)
+                {
+                    watch.dispose()
+                    resolve()
+                }
+            })
+        })
+    }
+}
+
+/** An HTTP server that answers every upgrade request with a raw non-101 response. */
+class RefusingServer
+{
+    private static readonly StatusLine = 'HTTP/1.1 {status} Refused'
+    private static readonly StatusToken = '{status}'
+    private static readonly Crlf = '\r\n'
+    private static readonly ContentTypeHeader = 'Content-Type: application/json'
+    private static readonly ContentLengthHeader = 'Content-Length: '
+    private static readonly ConnectionCloseHeader = 'Connection: close'
+
+    private readonly server: Server
+
+    /** `missingBytes` > 0 declares a longer Content-Length than is sent, so the body ends prematurely. */
+    public constructor(status: number, body: string, missingBytes: number = 0)
+    {
+        this.server = createServer()
+        this.server.on('upgrade', (_request, socket: Duplex) =>
+        {
+            socket.on('error', () => { /* the client may hang up mid-body */ })
+            const bytes = Buffer.from(body, 'utf8')
+            const head = [
+                RefusingServer.StatusLine.replace(RefusingServer.StatusToken, String(status)),
+                RefusingServer.ContentTypeHeader,
+                RefusingServer.ContentLengthHeader + String(bytes.length + missingBytes),
+                RefusingServer.ConnectionCloseHeader,
+            ].join(RefusingServer.Crlf)
+            socket.write(head + RefusingServer.Crlf + RefusingServer.Crlf)
+            socket.end(bytes)
+        })
+    }
+
+    public async Start(): Promise<string>
+    {
+        this.server.listen(0, RealWsFixture.Loopback)
+        await once(this.server, 'listening')
+        return RealWsFixture.Url(this.server.address() as AddressInfo)
+    }
+
+    public async Stop(): Promise<void>
+    {
+        this.server.closeAllConnections()
+        await new Promise<void>(resolve => this.server.close(() => resolve()))
+    }
+}
+
+enum CloseMoment
+{
+    Never,
+    OnConnect,
+    OnFirstMessage,
+}
+
+/** A real ws server that closes each connection with a given code at a given moment. */
+class ClosingServer
+{
+    private readonly server: WebSocketServer
+
+    public constructor(moment: CloseMoment, code: number)
+    {
+        this.server = new WebSocketServer({ port: 0, host: RealWsFixture.Loopback })
+        this.server.on('connection', ws =>
+        {
+            if (moment === CloseMoment.OnConnect)
+            {
+                ws.close(code)
+            }
+            if (moment === CloseMoment.OnFirstMessage)
+            {
+                ws.once('message', () => ws.close(code))
+            }
+        })
+    }
+
+    public async Start(): Promise<string>
+    {
+        await once(this.server, 'listening')
+        return RealWsFixture.Url(this.server.address() as AddressInfo)
+    }
+
+    public async Stop(): Promise<void>
+    {
+        for (const ws of this.server.clients)
+        {
+            ws.terminate()
+        }
+        await new Promise<void>(resolve => this.server.close(() => resolve()))
+    }
+}
+
+/** Records every uncaught exception and unhandled rejection while armed. */
+class UnhandledWatch
+{
+    public readonly Seen: unknown[] = []
+    private readonly listener = (error: unknown): void => { this.Seen.push(error) }
+
+    public Arm(): void
+    {
+        process.on('uncaughtException', this.listener)
+        process.on('unhandledRejection', this.listener)
+    }
+
+    public Disarm(): void
+    {
+        process.off('uncaughtException', this.listener)
+        process.off('unhandledRejection', this.listener)
+    }
+}
+
+test('a refused upgrade rejects with its status and body', async () =>
+{
+    const server = new RefusingServer(RealWsFixture.RefusedStatus, RealWsFixture.RefusedBody)
+    const url = await server.Start()
+    try
+    {
+        const error = await RealWsFixture.Connect(url).then(() => undefined, (caught: unknown) => caught)
+        assert.ok(error instanceof UpgradeRefusedError)
+        assert.equal(error.Status, RealWsFixture.RefusedStatus)
+        assert.equal(JSON.parse(error.Body).error, RealWsFixture.RefusedError)
+        assert.equal(error.message, RealWsFixture.RefusedMessage)
+    }
+    finally
+    {
+        await server.Stop()
+    }
+})
+
+test('a refused upgrade with an over-cap body keeps at most the cap and leaves no unhandled error', async () =>
+{
+    const server = new RefusingServer(RealWsFixture.RefusedStatus, 'x'.repeat(RealWsFixture.OverCapLength))
+    const url = await server.Start()
+    const watch = new UnhandledWatch()
+    watch.Arm()
+    try
+    {
+        const error = await RealWsFixture.Connect(url).then(() => undefined, (caught: unknown) => caught)
+        assert.ok(error instanceof UpgradeRefusedError)
+        assert.equal(error.Status, RealWsFixture.RefusedStatus)
+        assert.ok(Buffer.byteLength(error.Body, 'utf8') <= RealWsFixture.BodyCap)
+        assert.ok(error.Body.length > 0)
+        await delay(RealWsFixture.SettleMs)
+        assert.deepEqual(watch.Seen, [])
+    }
+    finally
+    {
+        watch.Disarm()
+        await server.Stop()
+    }
+})
+
+test('a refused upgrade whose body ends prematurely rejects with the partial body', async () =>
+{
+    const server = new RefusingServer(RealWsFixture.RefusedStatus, RealWsFixture.RefusedBody, RealWsFixture.MissingBytes)
+    const url = await server.Start()
+    const watch = new UnhandledWatch()
+    watch.Arm()
+    try
+    {
+        const error = await RealWsFixture.Connect(url).then(() => undefined, (caught: unknown) => caught)
+        assert.ok(error instanceof UpgradeRefusedError)
+        assert.equal(error.Status, RealWsFixture.RefusedStatus)
+        assert.equal(error.Body, RealWsFixture.RefusedBody)
+        await delay(RealWsFixture.SettleMs)
+        assert.deepEqual(watch.Seen, [])
+    }
+    finally
+    {
+        watch.Disarm()
+        await server.Stop()
+    }
+})
+
+test('a server close keeps its code', async () =>
+{
+    const server = new ClosingServer(CloseMoment.OnFirstMessage, RealWsFixture.RetiredCode)
+    const url = await server.Start()
+    try
+    {
+        const client = await RealWsFixture.Connect(url)
+        await assert.rejects(client.CypherModels(), ConnectionLostError)
+        assert.equal(client.CloseCode(), RealWsFixture.RetiredCode)
+        assert.equal(client.State(), ConnectionState.Closed)
+        await client.DisposeAsync()
+    }
+    finally
+    {
+        await server.Stop()
+    }
+})
+
+test('a server close before a request is sent rejects that request as closed', async () =>
+{
+    const server = new ClosingServer(CloseMoment.OnConnect, RealWsFixture.RetiredCode)
+    const url = await server.Start()
+    try
+    {
+        const client = await RealWsFixture.Connect(url)
+        await RealWsFixture.UntilClosed(client)
+        await assert.rejects(client.CypherModels(), (error: unknown) => error instanceof ConnectionError && error.code === ConnectionErrors.Closed)
+        assert.equal(client.CloseCode(), RealWsFixture.RetiredCode)
+        await client.DisposeAsync()
+    }
+    finally
+    {
+        await server.Stop()
+    }
+})
+
+test('an open client has no close code', async () =>
+{
+    const server = new ClosingServer(CloseMoment.Never, RealWsFixture.RetiredCode)
+    const url = await server.Start()
+    try
+    {
+        const client = await RealWsFixture.Connect(url)
+        assert.equal(client.CloseCode(), undefined)
+        await client.DisposeAsync()
+    }
+    finally
+    {
+        await server.Stop()
+    }
 })

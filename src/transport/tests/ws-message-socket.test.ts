@@ -12,6 +12,7 @@ class FakeWs
     public closedCode: number | undefined
     public terminated = false
     private messageListener: ((data: unknown, isBinary: boolean) => void) | undefined
+    private readonly closeListeners: Array<(code: number) => void> = []
 
     public on(event: string, listener: (...args: unknown[]) => void): this
     {
@@ -19,7 +20,19 @@ class FakeWs
         {
             this.messageListener = listener as (data: unknown, isBinary: boolean) => void
         }
+        if (event === 'close')
+        {
+            this.closeListeners.push(listener as (code: number) => void)
+        }
         return this
+    }
+
+    public EmitClose(code: number): void
+    {
+        for (const listener of this.closeListeners)
+        {
+            listener(code)
+        }
     }
 
     public send(data: string, cb?: (err?: Error) => void): void
@@ -65,6 +78,23 @@ test('send forwards the text when the socket is open', async () =>
     const socket = new WsMessageSocket(fake as unknown as WebSocket)
     await socket.Send('payload')
     assert.equal(fake.lastSent, 'payload')
+})
+
+test('has no close code while open', () =>
+{
+    const socket = new WsMessageSocket(new FakeWs() as unknown as WebSocket)
+    assert.equal(socket.CloseCode(), undefined)
+})
+
+test('records the close code before any OnClose handler runs', () =>
+{
+    const fake = new FakeWs()
+    const socket = new WsMessageSocket(fake as unknown as WebSocket)
+    const seen: Array<number | undefined> = []
+    socket.OnClose(() => seen.push(socket.CloseCode()))
+    fake.EmitClose(4003)
+    assert.deepEqual(seen, [4003])
+    assert.equal(socket.CloseCode(), 4003)
 })
 
 test('passes a string frame through unchanged', () =>

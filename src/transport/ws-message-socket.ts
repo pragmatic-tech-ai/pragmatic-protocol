@@ -26,6 +26,7 @@ export class WsMessageSocket implements IMessageSocket
     private readonly onSoft: (() => void) | undefined
     private overHardSince: number | undefined
     private shed = false
+    private closeCode: number | undefined
 
     public constructor(ws: WebSocket, options: WsMessageSocketOptions = {})
     {
@@ -34,6 +35,8 @@ export class WsMessageSocket implements IMessageSocket
         this.now = options.now ?? (() => Date.now())
         this.onShed = options.onShed
         this.onSoft = options.onSoft
+        // attached first, so the code is recorded before any OnClose handler runs
+        ws.on('close', (code: number) => { this.closeCode = code })
     }
 
     public Send(json: string): Promise<void>
@@ -99,6 +102,11 @@ export class WsMessageSocket implements IMessageSocket
     public Close(): void
     {
         this.ws.close()
+    }
+
+    public CloseCode(): number | undefined
+    {
+        return this.closeCode
     }
 
     private static ToText(data: RawData): string

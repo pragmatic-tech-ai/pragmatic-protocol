@@ -18,6 +18,19 @@ export class ConnectionLostError extends Error
     }
 }
 
+/** A WebSocket upgrade the server answered with a non-101 response: its status and (capped, UTF-8) body. */
+export class UpgradeRefusedError extends Error
+{
+    private static readonly MessagePrefix = 'Unexpected server response: '
+    private static readonly Name = 'UpgradeRefusedError'
+
+    public constructor(public readonly Status: number, public readonly Body: string)
+    {
+        super(UpgradeRefusedError.MessagePrefix + String(Status))
+        this.name = UpgradeRefusedError.Name
+    }
+}
+
 /** The JSON-RPC error a draining server returns for requests that arrive after drain begins. */
 export class DrainingError
 {

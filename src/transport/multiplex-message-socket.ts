@@ -50,4 +50,9 @@ export class MultiplexMessageSocket implements IMessageSocket
     {
         this.inner.Close()
     }
+
+    public CloseCode(): number | undefined
+    {
+        return this.inner.CloseCode?.()
+    }
 }

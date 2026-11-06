@@ -182,9 +182,24 @@ export class PragmaticClient
         scheduling = false
     }
 
+    /** The code the current socket closed with (e.g. a server's 4003); undefined while it is open or when its transport cannot tell. */
+    public CloseCode(): number | undefined
+    {
+        return this.socket.CloseCode?.()
+    }
+
     private OnDrop(socket: IMessageSocket): void
     {
-        if (this.disposed || this.dialer === undefined || socket !== this.socket || this.state === ConnectionState.Reconnecting)
+        if (this.disposed || socket !== this.socket)
+        {
+            return
+        }
+        if (this.dialer === undefined)
+        {
+            this.EndWithoutReconnect()
+            return
+        }
+        if (this.state === ConnectionState.Reconnecting)
         {
             return
         }
@@ -212,6 +227,22 @@ export class PragmaticClient
         }
         this.attempt++
         this.schedule(this.backoff!.Next(this.attempt), () => void this.Reconnect())
+    }
+
+    /**
+     * A dialer-less client (CreateOverSocket / ConnectAsync) cannot reconnect: a close rejects its in-flight requests with
+     * ConnectionLostError and leaves it Closed. The connection is not disposed, so a later request fails as closed
+     * (vscode-jsonrpc ConnectionError Closed), the reader having already reported the close.
+     */
+    private EndWithoutReconnect(): void
+    {
+        if (this.state === ConnectionState.Closed)
+        {
+            return
+        }
+        this.idleGeneration++
+        this.lost.reject(new ConnectionLostError())
+        this.SetState(ConnectionState.Closed)
     }
 
     private async Reconnect(): Promise<void>
@@ -250,12 +281,25 @@ export class PragmaticClient
 
     private Request<P, R, E>(type: RequestType<P, R, E>, params: P): Promise<R>
     {
-        return Promise.race([this.connection.sendRequest(type, params), this.lost.promise])
+        return this.Race(() => this.connection.sendRequest(type, params))
     }
 
     private RequestNoParams<R>(type: RequestType0<R, void>): Promise<R>
     {
-        return Promise.race([this.connection.sendRequest(type), this.lost.promise])
+        return this.Race(() => this.connection.sendRequest(type))
+    }
+
+    /** Races a send against the drop; a send that throws synchronously (a closed or disposed connection) becomes a rejection. */
+    private Race<R>(send: () => Promise<R>): Promise<R>
+    {
+        try
+        {
+            return Promise.race([send(), this.lost.promise])
+        }
+        catch (error)
+        {
+            return Promise.reject(error)
+        }
     }
 
     private Subscribe<P>(type: NotificationType<P>, handler: (params: P) => void): Disposable
