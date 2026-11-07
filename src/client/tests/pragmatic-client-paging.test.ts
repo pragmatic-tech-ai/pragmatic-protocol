@@ -48,6 +48,22 @@ class ReconnectPair
     }
 }
 
+/** Waits (bounded) until a condition holds: a notification's first delivery can take longer than a fixed sleep. */
+class Until
+{
+    private static readonly TimeoutMs = 2000
+    private static readonly PollMs = 5
+
+    public static async Holds(condition: () => boolean): Promise<void>
+    {
+        const deadline = Date.now() + Until.TimeoutMs
+        while (!condition() && Date.now() < deadline)
+        {
+            await new Promise(resolve => setTimeout(resolve, Until.PollMs))
+        }
+    }
+}
+
 class PagingDialer implements ISocketDialer
 {
     private readonly pairs: ReconnectPair[] = []
@@ -182,11 +198,11 @@ test('OnBuildStateChanged receives solution/buildStateChanged and survives recon
     const seen: BuildState[] = []
     client.OnBuildStateChanged(p => seen.push(p.buildState))
     await dialer.LatestServer().sendNotification(SolutionProtocol.BuildStateChanged, { buildState: BuildState.Building })
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await Until.Holds(() => seen.length >= 1)
     dialer.DropLatest()
     await new Promise(resolve => setImmediate(resolve))
     await dialer.LatestServer().sendNotification(SolutionProtocol.BuildStateChanged, { buildState: BuildState.Ready })
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await Until.Holds(() => seen.length >= 2)
     assert.deepEqual(seen, [BuildState.Building, BuildState.Ready])
     await client.DisposeAsync()
 })
