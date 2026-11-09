@@ -28,25 +28,30 @@ src/
 | `ModelProtocol` | `model-protocol.ts:5` | `model/view`, `model/resources` |
 | `ConnectorProtocol` | `connector-protocol.ts:6` | `connector/{list(0),prepare,refresh(0),read,writeBack,test}` |
 | `AdminProtocol` | `admin-protocol.ts:5` | `admin/grants/{list,grant,revoke}`, `admin/config/{get(0),set}`, `admin/accounts/{list(0),create,disable}`, `admin/tokens/{list(0),issue,revoke}` |
-| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>` (:9); method hoisted to `QueryMethod` (:7) |
+| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>`; `cypher/execute` → `RequestType<CypherExecuteParams, CypherExecuteResultDto, void>` (writes; development tenants only); `cypher/models` → `RequestType0<CypherModelListDto, void>` (the model shard ids a caller may pass as `modelId`; development tenants only). Method strings hoisted (`QueryMethod`, `ExecuteMethod`, `ModelsMethod`) |
+| `GraphProtocol` | `graph-protocol.ts:20` | `graph/{create,list(0),get,delete,contribute,export,load,loaded(0)}`: the server's named graphs (packages contributed from a solution, exported, loaded/promoted) |
+| `ApplicationDeployProtocol` | `pragmatic-app-deploy-protocol.ts:5` | `application/deploy` → `CypherAppDeployParamsDto` (app name/version, packages, UI bundle, servable manifest) → `AppDeployResultDto` (in-band `status`/`reason`) |
 | `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
 | `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
 | `DataSharingProtocol` | `data-sharing-protocol.ts:5` | `data/share`, `data/unshare`, `data/shares/list` (SP-5 record sharing; `ShareSubjectKind`, share grant DTOs) |
 | `DataAssignmentProtocol` | `data-assignment-protocol.ts:5` | `data/assign` → `AssignParams` `{ concept, id, owner: AssignOwnerDto, owningBu? }` → `AssignResultDto` `{ status: AssignStatus, reason? }`; `AssignStatus` = Applied / Denied / Invalid / NotFound / Unsupported |
 
-## Wire DTOs (`src/dto/wire-dtos.ts`, ~311 lines, all camelCase)
+## Wire DTOs (`src/dto/wire-dtos.ts`, ~900 lines, all camelCase)
 
 Single file. Only external import: `Diagnostic/Position/Range` from `vscode-languageserver-types` (:1). One PascalCase outlier: `RenameErrorDto.Error` (:57).
 
 - **Language params** (:3-50); **Solution/model** (:52-107: `OpenSolutionParams`, `ActiveSolutionSummary`, `SolutionGraphChangePayload`, `ModelViewParams`, `ModelViewPageDto`, `Page<T>`/`PageParams` (items/nextCursor envelope), `BuildState`, `BuildStateChangedPayload`, `ResolvedResourceDto`, …).
 - **Connector** (:109-189: `ConnectorInfoDto`, `ConnectorModelDto`, `EntityDto`, `WriteResultDto`, …).
 - **Admin** (:191-273: `GrantDto`, `IdentityConfigDto`, `AccountDto`, `ServiceTokenSummaryDto`, `TokenIssuedDto`, …).
-- **Cypher** (:275-310):
-  - `CypherParamValue` recursive scalar/array/object union (:275); `CypherQueryParams` `{ cypher, parameters? }` (:277).
+- **Cypher** (`CypherParamValue` … `CypherExecuteResultDto`):
+  - `CypherParamValue` recursive scalar/array/object union; `CypherQueryParams` `{ cypher, parameters?, modelId? }` + `PageParams` (`modelId` scopes the read to one model shard; a runtime tenant refuses it).
   - `CypherFieldSnapshotDto` `{ value, definitionOrigin, valueOrigin }` (:283).
   - `CypherNodeCellDto` (:291) — structural mirror of TODL MirrorSnapshot: `{ id, concept, class?, label, fields: map<CypherFieldSnapshotDto>, refs: map<string[]>, iconKey? }`.
   - `CypherCellDto` (:303) — recursive union; **node member precedes the generic-object member** (ordering matters for runtime narrowing).
-  - `CypherQueryPageDto` — `Page<CypherCellDto[]>` + `{ columns: string[], truncated: boolean }` (rows are `items`, paging via `nextCursor`). Cursor codec: `PageCursorCodec` (`src/paging`); stale-cursor error code: `CursorStaleError` (-32032).
+  - `CypherQueryPageDto` — `Page<CypherCellDto[]>` + `{ columns: string[], truncated: boolean }` (rows are `items`, paging via `nextCursor`). Cursor codec: `PageCursorCodec` (`src/paging`); stale-cursor error code: `CursorStaleError` (-32032). Decode cells with `CypherCells.AsNode` / `AsMap` (`src/dto/cypher-cells.ts`).
+  - `CypherModelListDto` `{ models }`; `CypherExecuteParams` `{ cypher, parameters?, modelId, expectedRevision? }` (`modelId` typed optional but REQUIRED by the server); `CypherExecuteResultDto` `{ status: AppWriteStatus, reason?, counts: CypherWriteCountsDto, revision, columns, rows, truncated }` (validation and access outcomes travel in-band as `status`).
+  - Visibility is the server's concern, not the wire's: on a development tenant every `cypher/*`, `model/view` and `model/resources` answer is decided by the caller's engine access scope (rows and members outside it are never returned, hidden members are absent); the DTOs carry no visibility flags.
+- **Application deploy / graphs** (`CypherAppDeployParamsDto`, `AppDeployResultDto`, `Graph*Dto`, `ContributedPackageDto`): see the contract rows above.
 
 ## Transport (`src/transport/`)
 
@@ -61,15 +66,16 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
 - **`PragmaticClient`** (:23), private ctor over a `MessageConnection` + `IMessageSocket`.
   - `static CreateOverSocket(socket)` (:37) — builds connection, `listen()`, returns client (shared-instance entry for in-memory/test wiring).
   - `static async ConnectAsync(url, { bearerToken? })` (:44) — opens `ws` (optional `Authorization: Bearer`), delegates to `CreateOverSocket(new WsMessageSocket(ws))`.
-- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/`CypherQuery`:154/connector). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDiagnostics` return `Disposable`. **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
+- `static async ConnectReconnecting(dialer, options)` — a reconnecting client over an `ISocketDialer` (`NodeClientWiring` builds the Node dialer); `State()` / `OnStateChanged` expose the connection state.
+- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/connector; `CypherQuery` + `QueryAll` (pages to the end), `CypherExecute`, `CypherModels`; `DeployApplication`; `CreateGraph`/`ListGraphs`/`GetGraph`/`DeleteGraph`/`ContributeGraph`/`ExportGraph`/`LoadGraph`/`GetLoadedGraph`). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDiagnostics` return `Disposable`. **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
 
 ## Barrel (`src/index.ts`)
 
-`export *` DTOs (:1); the ten protocol classes (:2-10; incl. `PragmaticAppProtocol`, `AppDataProtocol`, `DataSharingProtocol`, `DataAssignmentProtocol`); transport (:8-12); `PragmaticClient` (:13); vscode-jsonrpc runtime values + types (:14-15, the shared-instance seam).
+`export *` DTOs; `CursorStaleError`, `PageCursorCodec`; the twelve protocol classes (incl. `ApplicationDeployProtocol`, `GraphProtocol`, `PragmaticAppProtocol`, `AppDataProtocol`, `DataSharingProtocol`, `DataAssignmentProtocol`) and `CypherCells`; transport (sockets, reader/writer, `TransportCloseCode` + connection signals, `HeartbeatMonitor`); `PragmaticClient`, `NodeClientWiring`; vscode-jsonrpc runtime values + types (the shared-instance seam). `src/browser.ts` is the browser barrel (no Node-only wiring).
 
 ## Tests + build
 
-- `node:test` + `node:assert/strict` via `tsx --test "src/**/*.test.ts"` (`package.json:15`); tests colocated under `tests/` subdirs. Round-trips wire two connections over `InMemoryMessageSocket.Pair()`. Suite = 19.
+- `node:test` + `node:assert/strict` via `tsx --test "src/**/*.test.ts"` (`package.json:15`); tests colocated under `tests/` subdirs. Round-trips wire two connections over `InMemoryMessageSocket.Pair()`. `barrel-parity.test.ts` keeps the Node and browser barrels in step.
 - Build `tsc -p tsconfig.build.json` (excludes `*.test.ts`/`tests/**`); ES2022, NodeNext, strict, declaration; `dist/` mirrors `src/`, gitignored.
 
 ## To add a protocol method
