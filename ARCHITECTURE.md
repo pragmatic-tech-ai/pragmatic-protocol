@@ -29,7 +29,7 @@ src/
 | `ConnectorProtocol` | `connector-protocol.ts:6` | `connector/{list(0),prepare,refresh(0),read,writeBack,test}` |
 | `AdminProtocol` | `admin-protocol.ts:5` | `admin/grants/{list,grant,revoke}`, `admin/config/{get(0),set}`, `admin/accounts/{list(0),create,disable}`, `admin/tokens/{list(0),issue,revoke}` |
 | `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>`; `cypher/execute` → `RequestType<CypherExecuteParams, CypherExecuteResultDto, void>` (writes; development tenants only); `cypher/models` → `RequestType0<CypherModelListDto, void>` (the model shard ids a caller may pass as `modelId`; development tenants only). Method strings hoisted (`QueryMethod`, `ExecuteMethod`, `ModelsMethod`) |
-| `GraphProtocol` | `graph-protocol.ts:20` | `graph/{create,list(0),get,delete,contribute,export,load,loaded(0)}`: the server's named graphs (packages contributed from a solution, exported, loaded/promoted) |
+| `GraphProtocol` | `graph-protocol.ts:5` | `graph/{create,list(0),get,delete,contribute,export,load,loaded(0)}`: the server's named graphs (packages contributed from a solution, exported, loaded/promoted) |
 | `ApplicationDeployProtocol` | `pragmatic-app-deploy-protocol.ts:5` | `application/deploy` → `CypherAppDeployParamsDto` (app name/version, packages, UI bundle, servable manifest) → `AppDeployResultDto` (in-band `status`/`reason`) |
 | `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
 | `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
