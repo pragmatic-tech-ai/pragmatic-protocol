@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { LanguageProtocol } from '../language-protocol.js'
 import { SolutionProtocol } from '../solution-protocol.js'
+import { AppDataProtocol } from '../app-data-protocol.js'
 
 test('language contracts carry their wire method names', () =>
 {
@@ -28,4 +29,9 @@ test('solution contracts carry their wire method names', () =>
     assert.equal(SolutionProtocol.OpenSolution.method, 'solution/open')
     assert.equal(SolutionProtocol.ActiveSolution.method, 'solution/active')
     assert.equal(SolutionProtocol.GraphChanged.method, 'solution/graphChanged')
+})
+
+test('data/changed method string', () =>
+{
+    assert.equal(AppDataProtocol.Changed.method, 'data/changed')
 })

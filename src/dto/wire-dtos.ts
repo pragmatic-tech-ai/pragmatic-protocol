@@ -710,6 +710,17 @@ export interface AppWriteResultDto
     results: AppWriteOpResultDto[]
 }
 
+/** `data/changed` push: the concepts (sorted, each covering its subconcepts) a commit touched, filtered to the connection's read scope. */
+export interface DataChangedPayload
+{
+    /**
+     * Engine commit sequence number, decimal: a monotonic watermark, never older than
+     * an earlier payload's; it may repeat across payloads and is not a unique payload id.
+     */
+    commit: string
+    concepts: string[]
+}
+
 export enum ShareSubjectKind
 {
     Principal = 'principal',

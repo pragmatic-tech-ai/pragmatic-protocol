@@ -17,7 +17,9 @@ src/
   index.ts     barrel (also re-exports the vscode-jsonrpc runtime — see gotcha)
 ```
 
-## Contracts (`src/contracts/`)
+## Contracts
+
+Source: `src/contracts/`.
 
 **Convention:** a `class` with `public static readonly` `RequestType`/`RequestType0`/`NotificationType` members; request types parameterized `<Params, Result, Error=void>`. Method string inlined in the ctor, OR hoisted to a `private static readonly` (as `CypherProtocol.QueryMethod`).
 
@@ -28,15 +30,17 @@ src/
 | `ModelProtocol` | `model-protocol.ts:5` | `model/view`, `model/resources` |
 | `ConnectorProtocol` | `connector-protocol.ts:6` | `connector/{list(0),prepare,refresh(0),read,writeBack,test}` |
 | `AdminProtocol` | `admin-protocol.ts:5` | `admin/grants/{list,grant,revoke}`, `admin/config/{get(0),set}`, `admin/accounts/{list(0),create,disable}`, `admin/tokens/{list(0),issue,revoke}` |
-| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>`; `cypher/execute` → `RequestType<CypherExecuteParams, CypherExecuteResultDto, void>` (writes; development tenants only); `cypher/models` → `RequestType0<CypherModelListDto, void>` (the model shard ids a caller may pass as `modelId`; development tenants only). Method strings hoisted (`QueryMethod`, `ExecuteMethod`, `ModelsMethod`) |
+| `CypherProtocol` | `cypher-protocol.ts:5` | `cypher/query` → `RequestType<CypherQueryParams, CypherQueryPageDto, void>`; `cypher/execute` → `RequestType<CypherExecuteParams, CypherExecuteResultDto, void>` (writes; both tenant purposes); `cypher/models` → `RequestType0<CypherModelListDto, void>` (the model ids a caller may pass as `modelId`: dev model ids, runtime package ids). Method strings hoisted (`QueryMethod`, `ExecuteMethod`, `ModelsMethod`) |
 | `GraphProtocol` | `graph-protocol.ts:5` | `graph/{create,list(0),get,delete,contribute,export,load,loaded(0)}`: the server's named graphs (packages contributed from a solution, exported, loaded/promoted) |
 | `ApplicationDeployProtocol` | `pragmatic-app-deploy-protocol.ts:5` | `application/deploy` → `CypherAppDeployParamsDto` (app name/version, packages, UI bundle, servable manifest) → `AppDeployResultDto` (in-band `status`/`reason`) |
 | `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
-| `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
+| `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application), `data/changed` (notif, `DataChangedPayload { commit, concepts }`; runtime tenants only, see "data/changed" below) |
 | `DataSharingProtocol` | `data-sharing-protocol.ts:5` | `data/share`, `data/unshare`, `data/shares/list` (SP-5 record sharing; `ShareSubjectKind`, share grant DTOs) |
 | `DataAssignmentProtocol` | `data-assignment-protocol.ts:5` | `data/assign` → `AssignParams` `{ concept, id, owner: AssignOwnerDto, owningBu? }` → `AssignResultDto` `{ status: AssignStatus, reason? }`; `AssignStatus` = Applied / Denied / Invalid / NotFound / Unsupported |
 
-## Wire DTOs (`src/dto/wire-dtos.ts`, ~900 lines, all camelCase)
+## Wire DTOs
+
+Source: `src/dto/wire-dtos.ts`, about 900 lines, all camelCase.
 
 Single file. Only external import: `Diagnostic/Position/Range` from `vscode-languageserver-types` (:1). One PascalCase outlier: `RenameErrorDto.Error` (:57).
 
@@ -44,16 +48,43 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
 - **Connector** (:109-189: `ConnectorInfoDto`, `ConnectorModelDto`, `EntityDto`, `WriteResultDto`, …).
 - **Admin** (:191-273: `GrantDto`, `IdentityConfigDto`, `AccountDto`, `ServiceTokenSummaryDto`, `TokenIssuedDto`, …).
 - **Cypher** (`CypherParamValue` … `CypherExecuteResultDto`):
-  - `CypherParamValue` recursive scalar/array/object union; `CypherQueryParams` `{ cypher, parameters?, modelId? }` + `PageParams` (`modelId` scopes the read to one model shard; a runtime tenant refuses it).
+  - `CypherParamValue` recursive scalar/array/object union; `CypherQueryParams` `{ cypher, parameters?, modelId? }` + `PageParams` (`modelId` scopes the read to one model; see "Meaning of modelId, memberId and record id").
   - `CypherFieldSnapshotDto` `{ value, definitionOrigin, valueOrigin }` (:283).
   - `CypherNodeCellDto` (:291) — structural mirror of TODL MirrorSnapshot: `{ id, concept, class?, label, fields: map<CypherFieldSnapshotDto>, refs: map<string[]>, iconKey? }`.
   - `CypherCellDto` (:303) — recursive union; **node member precedes the generic-object member** (ordering matters for runtime narrowing).
   - `CypherQueryPageDto` — `Page<CypherCellDto[]>` + `{ columns: string[], truncated: boolean }` (rows are `items`, paging via `nextCursor`). Cursor codec: `PageCursorCodec` (`src/paging`); stale-cursor error code: `CursorStaleError` (-32032). Decode cells with `CypherCells.AsNode` / `AsMap` (`src/dto/cypher-cells.ts`).
-  - `CypherModelListDto` `{ models }`; `CypherExecuteParams` `{ cypher, parameters?, modelId, expectedRevision? }` (`modelId` typed optional but REQUIRED by the server); `CypherExecuteResultDto` `{ status: AppWriteStatus, reason?, counts: CypherWriteCountsDto, revision, columns, rows, truncated }` (validation and access outcomes travel in-band as `status`).
-  - Visibility is the server's concern, not the wire's: on a development tenant every `cypher/*`, `model/view` and `model/resources` answer is decided by the caller's engine access scope (rows and members outside it are never returned, hidden members are absent); the DTOs carry no visibility flags.
+  - `CypherModelListDto` `{ models }`; `CypherExecuteParams` `{ cypher, parameters?, modelId, expectedRevision? }` (`modelId` typed optional; the server requires it on a development tenant and takes it as optional on a runtime tenant); `CypherExecuteResultDto` `{ status: AppWriteStatus, reason?, counts: CypherWriteCountsDto, revision, columns, rows, truncated }` (validation and access outcomes travel in-band as `status`).
+  - Visibility is the server's concern, not the wire's: on both tenant purposes every `cypher/*`, `connector/*`, `model/view`, `model/resources` and `data/*` answer is decided by the caller's engine access scope (rows and members outside it are never returned, hidden members are absent); the DTOs carry no visibility flags.
 - **Application deploy / graphs** (`CypherAppDeployParamsDto`, `AppDeployResultDto`, `Graph*Dto`, `ContributedPackageDto`): see the contract rows above.
 
-## Transport (`src/transport/`)
+## Cursor semantics
+
+Every paged answer (`cypher/query`, `connector/read*`, `model/view`) returns an opaque `nextCursor` (`PageCursorCodec`); a client passes it back unchanged with the same request and treats it as a token only.
+
+- **Keyset, not offset.** On the engine-backed server a cursor encodes the engine's keyset position, so a commit between two pages neither repeats nor skips a row. The cursor binds the query text and parameters, the schema version and the caller's access scope.
+- **Stale.** A cursor is stale (`CursorStaleError`, -32032) after a schema upgrade, after a security-setting edit, when presented by another principal, or when malformed. A new commit never stales it. A development tenant saves its `.todl` sources on every write, which upgrades its schema, so a dev cursor still stales after a write.
+- **Offset fallback.** A `cypher/query` whose `ORDER BY` uses an expression that is not a returned column has no keyset position; its cursor carries an offset instead, and a commit between its pages may repeat or skip rows.
+- **Short pages.** A page may hold fewer items than requested (a runtime `model/view` page drops rows that are not package members) while `nextCursor` stays present until the answer is exhausted.
+
+## data/changed
+
+`AppDataProtocol.Changed` (`data/changed`), received with `PragmaticClient.OnDataChanged(handler)`, which resubscribes after a reconnect. Runtime tenants only: a development tenant sends `solution/graphChanged` instead.
+
+- **Payload.** `DataChangedPayload { commit: string, concepts: string[] }`. `commit` is the engine commit sequence number as decimal text; `concepts` is the sorted, de-duplicated set of concept names that changed.
+- **Watermark.** `commit` is a monotonic watermark: never older than an earlier payload's, and it may repeat across payloads, so it is not a payload id. Compare commits numerically, not as strings.
+- **Coalescing.** The server merges changes over a short window (50 ms): one payload carries the latest commit and the union of concepts. A payload is never sent empty.
+- **Concept-level.** There are no record ids. A concept name covers its subconcepts, so a client treats an ancestor name as "maybe mine". A schema-level event (an upgrade, or the server reopening its engine) is announced as the root concept `todl.Element`. Only concepts the connection may read are sent; the filter is conservative, so a name can arrive for a concept in which the caller sees no change.
+- **Resubscribe and catch up.** Changes made while the client was disconnected are not replayed. After a reconnect (or on `todl.Element`) a client re-runs its queries. External sources changed outside the server are not announced.
+
+## Meaning of modelId, memberId and record id
+
+- **`modelId` on a development tenant** is a model of the active solution (`cypher/models` lists them from the saved sources). **On a runtime tenant** it is a delivered package id (`cypher/models` lists them, sorted, without `todl.system`); the read or write is confined to that package's data (engine nodes it owns and the external rows of its bindings). An unknown id is InvalidParams "model not found".
+- **`memberId`** (`model/view`): on a development tenant a solution member; on a runtime tenant a delivered package id, and an unknown one is InvalidRequest. Runtime items are the package's engine nodes (no schema, model or class nodes, no provenance) and `model/resources` is always empty.
+- **Record `id`** (`EntityDto.id`, `ModelMemberDto.id`, `data/write` and `data/share|unshare|assign` ids, `ShareGrantDto.recordId`): the engine's public id of the node. A client may choose the id of a record it creates in `data/write`. An external (connector) record's id is minted from its binding and key, so it is stable for that row.
+
+## Transport
+
+Source: `src/transport/`.
 
 - **`IMessageSocket`** (`message-socket.ts:2`) — narrow seam: `Send(json)`, `OnMessage`, `OnError`, `OnClose`, `Close`. One text frame in/out.
 - **`InMemoryMessageSocket`** (`in-memory-message-socket.ts:4`) — `static Pair()` (:11) cross-wires two for offline tests (delivery via `setImmediate`).
@@ -61,15 +92,19 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
 - **`WsMessageSocket`** (`ws-message-socket.ts:6`) — `ws` adapter; `readyState`-guarded sends; `ToText` normalizes string/Buffer[]/ArrayBuffer/Buffer → UTF-8 (:47).
 - **⚠ CRITICAL shared-instance gotcha:** `src/index.ts:14` re-exports `createMessageConnection, NullLogger, ResponseError, ErrorCodes` from `vscode-jsonrpc`. The **server MUST import these from this barrel**, never its own copy — two runtime vscode-jsonrpc instances break RequestType identity ("Unknown parameter structure auto"). Two copies on *disk* are fine; a second runtime *instance* is not.
 
-## Client (`src/client/pragmatic-client.ts`)
+## Client
+
+Source: `src/client/pragmatic-client.ts`.
 
 - **`PragmaticClient`** (:23), private ctor over a `MessageConnection` + `IMessageSocket`.
   - `static CreateOverSocket(socket)` (:37) — builds connection, `listen()`, returns client (shared-instance entry for in-memory/test wiring).
   - `static async ConnectAsync(url, { bearerToken? })` (:44) — opens `ws` (optional `Authorization: Bearer`), delegates to `CreateOverSocket(new WsMessageSocket(ws))`.
 - `static async ConnectReconnecting(dialer, options)` — a reconnecting client over an `ISocketDialer` (`NodeClientWiring` builds the Node dialer); `State()` / `OnStateChanged` expose the connection state.
-- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/connector; `CypherQuery` + `QueryAll` (pages to the end), `CypherExecute`, `CypherModels`; `DeployApplication`; `CreateGraph`/`ListGraphs`/`GetGraph`/`DeleteGraph`/`ContributeGraph`/`ExportGraph`/`LoadGraph`/`GetLoadedGraph`). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDiagnostics` return `Disposable`. **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
+- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/connector; `CypherQuery` + `QueryAll` (pages to the end), `CypherExecute`, `CypherModels`; `DeployApplication`; `CreateGraph`/`ListGraphs`/`GetGraph`/`DeleteGraph`/`ContributeGraph`/`ExportGraph`/`LoadGraph`/`GetLoadedGraph`). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDataChanged`, `OnDiagnostics` return `Disposable` (resubscribed on reconnect). **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
 
-## Barrel (`src/index.ts`)
+## Barrel
+
+Source: `src/index.ts`.
 
 `export *` DTOs; `CursorStaleError`, `PageCursorCodec`; the twelve protocol classes (incl. `ApplicationDeployProtocol`, `GraphProtocol`, `PragmaticAppProtocol`, `AppDataProtocol`, `DataSharingProtocol`, `DataAssignmentProtocol`) and `CypherCells`; transport (sockets, reader/writer, `TransportCloseCode` + connection signals, `HeartbeatMonitor`); `PragmaticClient`, `NodeClientWiring`; vscode-jsonrpc runtime values + types (the shared-instance seam). `src/browser.ts` is the browser barrel (no Node-only wiring).
 
