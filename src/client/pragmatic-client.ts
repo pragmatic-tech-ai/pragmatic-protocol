@@ -27,7 +27,7 @@ import { DataAssignmentProtocol } from '../contracts/data-assignment-protocol.js
 import type {
     ActiveSolutionSummary, ModelViewPageDto, PublishDiagnosticsParams, ResolvedResourceDto, RenameErrorDto, SolutionGraphChangePayload,
     ConnectorModelDto, EntityDto, FlushOutcomeDto, ConnectionProbeDto, CypherParamValue, CypherQueryPageDto, CypherExecuteResultDto, CypherModelListDto, ConnectorMergeDecisionDto, ConnectorFilterTermDto, Page, PragmaticAppSummaryDto,
-    AppWriteParams, AppWriteResultDto, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
+    AppWriteParams, AppWriteResultDto, DataChangedPayload, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
 } from '../dto/wire-dtos.js'
@@ -542,6 +542,11 @@ export class PragmaticClient
     public WriteAppData(params: AppWriteParams): Promise<AppWriteResultDto>
     {
         return this.Request(AppDataProtocol.Write, params)
+    }
+
+    public OnDataChanged(handler: (change: DataChangedPayload) => void): Disposable
+    {
+        return this.Subscribe(AppDataProtocol.Changed, handler)
     }
 
     public ShareRecord(params: ShareParams): Promise<ShareResultDto>

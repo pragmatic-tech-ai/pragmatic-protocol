@@ -6,7 +6,9 @@ import { InMemoryMessageSocket } from '../../transport/in-memory-message-socket.
 import { WebSocketMessageReader } from '../../transport/web-socket-message-reader.js'
 import { WebSocketMessageWriter } from '../../transport/web-socket-message-writer.js'
 import { SolutionProtocol } from '../../contracts/solution-protocol.js'
+import { AppDataProtocol } from '../../contracts/app-data-protocol.js'
 import { BuildState } from '../../dto/wire-dtos.js'
+import type { DataChangedPayload } from '../../dto/wire-dtos.js'
 import type { IMessageSocket } from '../../transport/message-socket.js'
 import type { ISocketDialer } from '../socket-dialer.js'
 import { ConnectionState } from '../connection-state.js'
@@ -119,5 +121,19 @@ test('resubscribes graphChanged after an unexpected drop so a push on the new co
     await dialer.LatestServer().sendNotification(SolutionProtocol.GraphChanged, { memberIds: ['m1'], fileIds: [] })
     await new Promise(resolve => setTimeout(resolve, 20))
     assert.deepEqual(seen, ['m1'])
+    await client.DisposeAsync()
+})
+
+test('OnDataChanged resubscribes after reconnect', async () =>
+{
+    const dialer = new FakeDialer()
+    const client = await PragmaticClient.ConnectReconnecting(dialer, { reconnect: { initialDelayMs: 0, factor: 2, maxDelayMs: 0 }, schedule: (_ms, fn) => fn() })
+    const seen: DataChangedPayload[] = []
+    client.OnDataChanged(change => { seen.push(change) })
+    dialer.DropLatest()
+    await new Promise(resolve => setImmediate(resolve))
+    await dialer.LatestServer().sendNotification(AppDataProtocol.Changed, { commit: '7', concepts: ['crm.Account'] })
+    await new Promise(resolve => setTimeout(resolve, 20))
+    assert.deepEqual(seen, [{ commit: '7', concepts: ['crm.Account'] }])
     await client.DisposeAsync()
 })

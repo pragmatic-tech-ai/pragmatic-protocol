@@ -32,7 +32,7 @@ src/
 | `GraphProtocol` | `graph-protocol.ts:5` | `graph/{create,list(0),get,delete,contribute,export,load,loaded(0)}`: the server's named graphs (packages contributed from a solution, exported, loaded/promoted) |
 | `ApplicationDeployProtocol` | `pragmatic-app-deploy-protocol.ts:5` | `application/deploy` → `CypherAppDeployParamsDto` (app name/version, packages, UI bundle, servable manifest) → `AppDeployResultDto` (in-band `status`/`reason`) |
 | `PragmaticAppProtocol` | `pragmatic-app-protocol.ts:5` | `application/list`, `application/open` (runtime-tenant application selection) |
-| `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application) |
+| `AppDataProtocol` | `app-data-protocol.ts:5` | `data/write` (record write against the bound application), `data/changed` (notif, `DataChangedPayload { commit, concepts }`; runtime tenants only, ruling S16) |
 | `DataSharingProtocol` | `data-sharing-protocol.ts:5` | `data/share`, `data/unshare`, `data/shares/list` (SP-5 record sharing; `ShareSubjectKind`, share grant DTOs) |
 | `DataAssignmentProtocol` | `data-assignment-protocol.ts:5` | `data/assign` → `AssignParams` `{ concept, id, owner: AssignOwnerDto, owningBu? }` → `AssignResultDto` `{ status: AssignStatus, reason? }`; `AssignStatus` = Applied / Denied / Invalid / NotFound / Unsupported |
 
@@ -67,7 +67,7 @@ Single file. Only external import: `Diagnostic/Position/Range` from `vscode-lang
   - `static CreateOverSocket(socket)` (:37) — builds connection, `listen()`, returns client (shared-instance entry for in-memory/test wiring).
   - `static async ConnectAsync(url, { bearerToken? })` (:44) — opens `ws` (optional `Authorization: Bearer`), delegates to `CreateOverSocket(new WsMessageSocket(ws))`.
 - `static async ConnectReconnecting(dialer, options)` — a reconnecting client over an `ISocketDialer` (`NodeClientWiring` builds the Node dialer); `State()` / `OnStateChanged` expose the connection state.
-- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/connector; `CypherQuery` + `QueryAll` (pages to the end), `CypherExecute`, `CypherModels`; `DeployApplication`; `CreateGraph`/`ListGraphs`/`GetGraph`/`DeleteGraph`/`ContributeGraph`/`ExportGraph`/`LoadGraph`/`GetLoadedGraph`). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDiagnostics` return `Disposable`. **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
+- Every protocol method is a 1:1 `sendRequest` wrapper (solution/language/model/connector; `CypherQuery` + `QueryAll` (pages to the end), `CypherExecute`, `CypherModels`; `DeployApplication`; `CreateGraph`/`ListGraphs`/`GetGraph`/`DeleteGraph`/`ContributeGraph`/`ExportGraph`/`LoadGraph`/`GetLoadedGraph`). `DidChange` is fire-and-forget. Notifs: `OnGraphChanged`, `OnDataChanged`, `OnDiagnostics` return `Disposable` (resubscribed on reconnect). **No `AdminProtocol` wrappers** (admin consumed server-side/by admin tooling).
 
 ## Barrel (`src/index.ts`)
 
