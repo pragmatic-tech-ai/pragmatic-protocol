@@ -348,45 +348,53 @@ export interface BusinessUnitDto
     parent?: string
 }
 
+/** Where a principal sits in the business-unit tree (contract C5). */
+export interface UserPlacementDto
+{
+    principalId: string
+    businessUnitId: string
+}
+
 export interface TeamDto
 {
     id: string
     name: string
-    owningBusinessUnit?: string
+    businessUnitId: string
+    idpGroups: string[]
+    manualMembers: string[]
 }
 
-export interface MembershipClaimRuleDto
+export interface RoleAssignmentDto
 {
-    claim: string
-    value: string
-    homeBusinessUnit?: string
-    teams?: string[]
+    role: string
+    principalIds: string[]
+    teamIds: string[]
 }
 
-export interface MembershipOverrideDto
+export interface ProfileAssignmentDto
 {
-    principalId: string
-    homeBusinessUnit?: string
-    teams?: string[]
+    profile: string
+    principalIds: string[]
+    teamIds: string[]
 }
 
-export interface MembershipDto
+/** One role's depth for one action on one concept, replacing the package default (C1 action and level strings). */
+export interface RoleOverrideDto
 {
-    claimsMapping: MembershipClaimRuleDto[]
-    overrides: MembershipOverrideDto[]
-}
-
-export interface OwnershipSourceDto
-{
-    kind: string
-    value: string
-}
-
-export interface OwnershipRuleDto
-{
+    role: string
     concept: string
-    owningBusinessUnit: OwnershipSourceDto
-    owner?: OwnershipSourceDto
+    action: string
+    level: string
+}
+
+export interface ProfileOverrideDto
+{
+    profile: string
+    concept: string
+    field: string
+    read: boolean
+    update: boolean
+    create: boolean
 }
 
 export interface PrivilegeDto
@@ -396,103 +404,22 @@ export interface PrivilegeDto
     level: string
 }
 
-export interface RoleConfigDto
-{
-    id: string
-    name: string
-    privileges: PrivilegeDto[]
-}
-
-export interface RoleClaimRuleDto
-{
-    claim: string
-    value: string
-    roles: string[]
-}
-
-export interface RoleOverrideDto
-{
-    principalId: string
-    roles: string[]
-}
-
-export interface TeamRoleGrantDto
-{
-    teamId: string
-    roles: string[]
-}
-
-export interface RoleAssignmentDto
-{
-    claimsMapping: RoleClaimRuleDto[]
-    overrides: RoleOverrideDto[]
-    teamRoles: TeamRoleGrantDto[]
-}
-
 export interface SecuredFieldDto
 {
     concept: string
     field: string
 }
 
-export interface FieldGrantDto
-{
-    concept: string
-    field: string
-    read?: boolean
-    update?: boolean
-    create?: boolean
-}
-
-export interface FieldProfileDto
-{
-    id: string
-    name: string
-    grants: FieldGrantDto[]
-}
-
-export interface FieldProfileClaimRuleDto
-{
-    claim: string
-    value: string
-    profiles: string[]
-}
-
-export interface FieldProfileOverrideDto
-{
-    principalId: string
-    profiles: string[]
-}
-
-export interface FieldProfileTeamGrantDto
-{
-    teamId: string
-    profiles: string[]
-}
-
-export interface FieldProfileAssignmentDto
-{
-    claimsMapping: FieldProfileClaimRuleDto[]
-    overrides: FieldProfileOverrideDto[]
-    teamProfiles: FieldProfileTeamGrantDto[]
-}
-
-export interface FieldSecurityDto
-{
-    securedFields: SecuredFieldDto[]
-    profiles: FieldProfileDto[]
-    profileAssignment: FieldProfileAssignmentDto
-}
-
+/** An environment's security setting (contract C5): placement, teams, assignments and overrides; roles come from packages. */
 export interface SecurityModelDto
 {
     businessUnits: BusinessUnitDto[]
+    users: UserPlacementDto[]
     teams: TeamDto[]
-    membership: MembershipDto
-    ownershipRules: OwnershipRuleDto[]
-    roles?: RoleConfigDto[]
-    roleAssignment?: RoleAssignmentDto
-    fieldSecurity?: FieldSecurityDto
+    roleAssignments: RoleAssignmentDto[]
+    profileAssignments: ProfileAssignmentDto[]
+    roleOverrides: RoleOverrideDto[]
+    profileOverrides: ProfileOverrideDto[]
 }
 
 export interface SetSecurityModelParams

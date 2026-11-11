@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { AdminProtocol } from '../contracts/admin-protocol.js'
-import type { SetSecurityModelParams } from '../dto/wire-dtos.js'
+import type { SecurityModelDto, SetSecurityModelParams } from '../dto/wire-dtos.js'
 
 class SecurityModelContractFixture
 {
@@ -9,13 +9,14 @@ class SecurityModelContractFixture
     {
         return {
             securityModel: {
-                businessUnits: [],
-                teams: [],
-                membership: { claimsMapping: [], overrides: [] },
-                ownershipRules: [],
-                roles: [{ id: 'r1', name: 'Editor', privileges: [{ action: 'read', concept: 'Order', level: 'organization' }] }],
-                roleAssignment: { claimsMapping: [], overrides: [], teamRoles: [] }
-            }
+                businessUnits: [{ id: 'root', name: 'Contoso' }, { id: 'sales', name: 'Sales', parent: 'root' }],
+                users: [{ principalId: 'alice', businessUnitId: 'sales' }],
+                teams: [{ id: 't1', name: 'Sales team', businessUnitId: 'sales', idpGroups: ['g1'], manualMembers: ['bob'] }],
+                roleAssignments: [{ role: 'BasicUser', principalIds: ['alice'], teamIds: ['t1'] }],
+                profileAssignments: [{ profile: 'hr.Compensation', principalIds: ['alice'], teamIds: [] }],
+                roleOverrides: [{ role: 'projects.ProjectManager', concept: 'projects.Project', action: 'read', level: 'businessUnit' }],
+                profileOverrides: [{ profile: 'hr.Compensation', concept: 'hr.Employee', field: 'Salary', read: true, update: false, create: false }],
+            },
         }
     }
 }
@@ -26,11 +27,22 @@ test('security-model admin methods have the expected method strings', () =>
     assert.equal(AdminProtocol.SetSecurityModel.method, 'admin/security-model/set')
 })
 
-test('SetSecurityModelParams carries roles and roleAssignment', () =>
+test('SetSecurityModelParams carries the C5 setting', () =>
 {
     const params = SecurityModelContractFixture.Params()
-    assert.equal(params.securityModel.roles?.length, 1)
-    assert.ok(params.securityModel.roleAssignment)
-    assert.deepEqual(params.securityModel.roles?.[0].privileges[0], { action: 'read', concept: 'Order', level: 'organization' })
-    assert.deepEqual(params.securityModel.membership, { claimsMapping: [], overrides: [] })
+    const wire: SetSecurityModelParams = JSON.parse(JSON.stringify(params))
+    assert.deepEqual(wire, params)
+    const model = wire.securityModel
+    for (const section of [model.businessUnits, model.users, model.teams, model.roleAssignments, model.profileAssignments, model.roleOverrides, model.profileOverrides])
+    {
+        assert.ok(section.length > 0)
+    }
+})
+
+test('retired sections are gone', () =>
+{
+    const model: SecurityModelDto = SecurityModelContractFixture.Params().securityModel
+    // @ts-expect-error ownershipRules is retired from the C5 setting
+    const retired: SecurityModelDto = { ...model, ownershipRules: [] }
+    assert.ok(retired)
 })
