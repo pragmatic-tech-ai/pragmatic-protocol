@@ -498,6 +498,48 @@ export interface SetSecurityModelParams
     securityModel: SecurityModelDto
 }
 
+/** One role default a deploy changed, per (role, concept, action); `before` / `after` are C1 level strings, absent = `none`. */
+export interface RoleDefaultChangeDto
+{
+    role: string
+    concept: string
+    action: string
+    before: string
+    after: string
+}
+
+/** One profile default a deploy changed, per (profile, concept, field); null = the profile did not grant the field. */
+export interface ProfileDefaultChangeDto
+{
+    profile: string
+    concept: string
+    field: string
+    before: FieldAccessDto | null
+    after: FieldAccessDto | null
+}
+
+/**
+ * One deploy's or promote's security changes (the change log entry and `AppDeployResultDto.securityChanges`): the
+ * package-default changes, the secured fields added and removed, and the setting entries the new packages cannot mean
+ * (dropped overrides, assignments of removed roles and profiles), which the deploy pruned from the setting.
+ */
+export interface SecurityChangesDto
+{
+    /** ISO time the change was applied. */
+    at: string
+    /** The app name (deploy) or the promote set name (promote). */
+    delivery: string
+    version: string
+    roleDefaults: RoleDefaultChangeDto[]
+    profileDefaults: ProfileDefaultChangeDto[]
+    securedFieldsAdded: SecuredFieldDto[]
+    securedFieldsRemoved: SecuredFieldDto[]
+    roleOverridesDropped: RoleOverrideDto[]
+    profileOverridesDropped: ProfileOverrideDto[]
+    rolesRemoved: RoleAssignmentDto[]
+    profilesRemoved: ProfileAssignmentDto[]
+}
+
 export interface IdentityConfigDto
 {
     packId: string
@@ -840,6 +882,8 @@ export interface AppDeployResultDto
     reason?: string
     appName: string
     appVersion: string
+    /** The deploy's security changes, present when it changed any (S4 Task 13). */
+    securityChanges?: SecurityChangesDto
 }
 
 /** Params for creating a named graph. */

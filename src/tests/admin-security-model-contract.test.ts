@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { AdminProtocol } from '../contracts/admin-protocol.js'
 import { SecurityRoleKind, TeamMemberOrigin } from '../dto/wire-dtos.js'
-import type { SecurityCatalogDto, SecurityModelDto, SetSecurityModelParams, TeamMemberDto } from '../dto/wire-dtos.js'
+import type { AppDeployResultDto, SecurityCatalogDto, SecurityChangesDto, SecurityModelDto, SetSecurityModelParams, TeamMemberDto } from '../dto/wire-dtos.js'
+import { AppWriteStatus } from '../dto/wire-dtos.js'
 
 class SecurityModelContractFixture
 {
@@ -68,4 +69,24 @@ test('retired sections are gone', () =>
     // @ts-expect-error ownershipRules is retired from the C5 setting
     const retired: SecurityModelDto = { ...model, ownershipRules: [] }
     assert.ok(retired)
+})
+
+test('the security change log method and a deploy result carrying its changes survive a round trip', () =>
+{
+    assert.equal(AdminProtocol.ListSecurityChanges.method, 'admin/security-changes/list')
+    const changes: SecurityChangesDto = {
+        at: '2026-11-12T10:00:00.000Z',
+        delivery: 'suite',
+        version: '2.0.0',
+        roleDefaults: [{ role: 'BasicUser', concept: 'hr.Employee', action: 'read', before: 'businessUnit', after: 'user' }],
+        profileDefaults: [{ profile: 'hr.Compensation', concept: 'hr.Employee', field: 'Bonus', before: null, after: { concept: 'hr.Employee', field: 'Bonus', read: true, update: false, create: false } }],
+        securedFieldsAdded: [{ concept: 'hr.Employee', field: 'Bonus' }],
+        securedFieldsRemoved: [],
+        roleOverridesDropped: [{ role: 'projects.ProjectManager', concept: 'hr.Review', action: 'read', level: 'organization' }],
+        profileOverridesDropped: [],
+        rolesRemoved: [{ role: 'projects.TaskEditor', principalIds: ['alice'], teamIds: [] }],
+        profilesRemoved: [],
+    }
+    const result: AppDeployResultDto = { status: AppWriteStatus.Applied, appName: 'suite', appVersion: '2.0.0', securityChanges: changes }
+    assert.deepEqual(JSON.parse(JSON.stringify(result)) as AppDeployResultDto, result)
 })
