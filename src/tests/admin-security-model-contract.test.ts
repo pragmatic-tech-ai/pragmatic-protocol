@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { AdminProtocol } from '../contracts/admin-protocol.js'
-import type { SecurityModelDto, SetSecurityModelParams } from '../dto/wire-dtos.js'
+import { SecurityRoleKind, TeamMemberOrigin } from '../dto/wire-dtos.js'
+import type { SecurityCatalogDto, SecurityModelDto, SetSecurityModelParams, TeamMemberDto } from '../dto/wire-dtos.js'
 
 class SecurityModelContractFixture
 {
@@ -37,6 +38,28 @@ test('SetSecurityModelParams carries the C5 setting', () =>
     {
         assert.ok(section.length > 0)
     }
+})
+
+test('security-catalog and team-members methods have the expected method strings', () =>
+{
+    assert.equal(AdminProtocol.GetSecurityCatalog.method, 'admin/security-catalog/get')
+    assert.equal(AdminProtocol.ListTeamMembers.method, 'admin/team-members/list')
+})
+
+test('the catalog and team-member wire shapes survive a round trip', () =>
+{
+    const catalog: SecurityCatalogDto = {
+        roles: [
+            { name: 'SystemAdministrator', kind: SecurityRoleKind.Base, defaults: [] },
+            { name: 'projects.ProjectManager', kind: SecurityRoleKind.Package, package: 'projects', defaults: [{ action: 'read', concept: 'projects.Project', level: 'organization' }] },
+        ],
+        concepts: [{ name: 'hr.Employee', package: 'hr', owned: true }],
+        securedFields: [{ concept: 'hr.Employee', field: 'Salary' }],
+        profiles: [{ name: 'hr.Compensation', package: 'hr', defaults: [{ concept: 'hr.Employee', field: 'Salary', read: true, update: false, create: false }] }],
+    }
+    assert.deepEqual(JSON.parse(JSON.stringify(catalog)) as SecurityCatalogDto, catalog)
+    const members: TeamMemberDto[] = [{ principalId: 'alice', origin: TeamMemberOrigin.Synced }, { principalId: 'alice', origin: TeamMemberOrigin.Manual }]
+    assert.deepEqual(JSON.parse(JSON.stringify(members)) as TeamMemberDto[], members)
 })
 
 test('retired sections are gone', () =>

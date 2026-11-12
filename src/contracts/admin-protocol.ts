@@ -1,5 +1,5 @@
 import { RequestType, RequestType0 } from 'vscode-jsonrpc'
-import type { GrantDto, GrantMutationDto, ListGrantsParams, IdentityConfigDto, AdminAckDto, SecurityModelDto, SetSecurityModelParams, AccountDto, CreateAccountParams, DisableAccountParams, ServiceTokenSummaryDto, IssueTokenParams, TokenIssuedDto, RevokeTokenParams, InvalidatePackParams, PackScriptsParams, ScriptAllowlistDto } from '../dto/wire-dtos.js'
+import type { GrantDto, GrantMutationDto, ListGrantsParams, IdentityConfigDto, AdminAckDto, SecurityModelDto, SetSecurityModelParams, SecurityCatalogDto, ListTeamMembersParams, TeamMemberDto, AccountDto, CreateAccountParams, DisableAccountParams, ServiceTokenSummaryDto, IssueTokenParams, TokenIssuedDto, RevokeTokenParams, InvalidatePackParams, PackScriptsParams, ScriptAllowlistDto } from '../dto/wire-dtos.js'
 
 /** JSON-RPC contracts for RBAC-gated tenant administration (grants + identity config). */
 export class AdminProtocol
@@ -11,6 +11,8 @@ export class AdminProtocol
     public static readonly SetConfig = new RequestType<IdentityConfigDto, AdminAckDto, void>('admin/config/set')
     public static readonly GetSecurityModel = new RequestType0<SecurityModelDto | undefined, void>('admin/security-model/get')
     public static readonly SetSecurityModel = new RequestType<SetSecurityModelParams, AdminAckDto, void>('admin/security-model/set')
+    public static readonly GetSecurityCatalog = new RequestType0<SecurityCatalogDto, void>('admin/security-catalog/get')
+    public static readonly ListTeamMembers = new RequestType<ListTeamMembersParams, TeamMemberDto[], void>('admin/team-members/list')
     public static readonly ListAccounts = new RequestType0<AccountDto[], void>('admin/accounts/list')
     public static readonly CreateAccount = new RequestType<CreateAccountParams, AdminAckDto, void>('admin/accounts/create')
     public static readonly DisableAccount = new RequestType<DisableAccountParams, AdminAckDto, void>('admin/accounts/disable')

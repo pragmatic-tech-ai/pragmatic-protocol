@@ -410,6 +410,77 @@ export interface SecuredFieldDto
     field: string
 }
 
+/** Whether a catalog role is one of the platform base roles or a package-declared role (C4). */
+export enum SecurityRoleKind
+{
+    Base = 'base',
+    Package = 'package',
+}
+
+/** One role of an environment's security catalog: its package defaults, keyed Base or Package (then its declaring package). */
+export interface SecurityRoleDto
+{
+    name: string
+    kind: SecurityRoleKind
+    /** The declaring package model id for a Package role; absent for a base role. */
+    package?: string
+    defaults: PrivilegeDto[]
+}
+
+/** One engine-stored concept the platform security governs: its home package and whether it carries the ownership aspect. */
+export interface SecurityConceptDto
+{
+    name: string
+    package: string
+    owned: boolean
+}
+
+/** The rights a field profile grants on one secured field. */
+export interface FieldAccessDto
+{
+    concept: string
+    field: string
+    read: boolean
+    update: boolean
+    create: boolean
+}
+
+/** One field profile of an environment's security catalog: its package and the per-field rights it grants. */
+export interface SecurityProfileDto
+{
+    name: string
+    package: string
+    defaults: FieldAccessDto[]
+}
+
+/** The security vocabulary an admin edits the C5 setting against: the environment's roles, concepts, secured fields and profiles. */
+export interface SecurityCatalogDto
+{
+    roles: SecurityRoleDto[]
+    concepts: SecurityConceptDto[]
+    securedFields: SecuredFieldDto[]
+    profiles: SecurityProfileDto[]
+}
+
+/** Whether a team member comes from an IdP-linked group or a manual roster entry (S3 MembershipOrigin). */
+export enum TeamMemberOrigin
+{
+    Synced = 'synced',
+    Manual = 'manual',
+}
+
+/** One row of a team's effective membership: a principal and where the membership comes from. */
+export interface TeamMemberDto
+{
+    principalId: string
+    origin: TeamMemberOrigin
+}
+
+export interface ListTeamMembersParams
+{
+    teamId: string
+}
+
 /** An environment's security setting (contract C5): placement, teams, assignments and overrides; roles come from packages. */
 export interface SecurityModelDto
 {
