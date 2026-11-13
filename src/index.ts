@@ -1,6 +1,7 @@
 import { NodeClientWiring } from './client/node-client-wiring.js'
 export * from './dto/wire-dtos.js'
-export { CursorStaleError } from './dto/wire-errors.js'
+export { CursorStaleError, DataSourceUnavailableError } from './dto/wire-errors.js'
+export type { DataSourceUnavailableData } from './dto/wire-errors.js'
 export { PageCursorCodec } from './paging/page-cursor-codec.js'
 export type { PageCursor } from './paging/page-cursor-codec.js'
 export { LanguageProtocol } from './contracts/language-protocol.js'
