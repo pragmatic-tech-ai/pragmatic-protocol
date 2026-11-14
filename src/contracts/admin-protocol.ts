@@ -1,7 +1,7 @@
 import { RequestType, RequestType0 } from 'vscode-jsonrpc'
 import type { GrantDto, GrantMutationDto, ListGrantsParams, IdentityConfigDto, AdminAckDto, SecurityModelDto, SetSecurityModelParams, SecurityCatalogDto, ListTeamMembersParams, TeamMemberDto, SecurityChangesDto, AccountDto, CreateAccountParams, DisableAccountParams, ServiceTokenSummaryDto, IssueTokenParams, TokenIssuedDto, RevokeTokenParams, InvalidatePackParams, PackScriptsParams, ScriptAllowlistDto } from '../dto/wire-dtos.js'
 
-/** JSON-RPC contracts for RBAC-gated tenant administration (grants + identity config). */
+/** JSON-RPC contracts for RBAC-gated environment administration (grants + identity config). */
 export class AdminProtocol
 {
     public static readonly ListGrants = new RequestType<ListGrantsParams, GrantDto[], void>('admin/grants/list')

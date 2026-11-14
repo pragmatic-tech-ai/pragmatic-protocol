@@ -91,7 +91,7 @@ class Fixtures
     public static readonly CloseEvent = 'close'
     public static readonly ErrorEvent = 'error'
     public static readonly MessageEvent = 'message'
-    public static readonly TenantUrl = 'wss://tenant.example/ws'
+    public static readonly EnvironmentUrl = 'wss://environment.example/ws'
     public static readonly ShortUrl = 'wss://t/ws'
     public static readonly TokenQuery = '?token='
 }
@@ -102,9 +102,9 @@ test('dialer opens over the global WebSocket with the bare URL and no auth mater
     scope.Install()
     try
     {
-        const socket = await new BrowserSocketDialer(Fixtures.TenantUrl).Dial()
+        const socket = await new BrowserSocketDialer(Fixtures.EnvironmentUrl).Dial()
         assert.ok(socket instanceof BrowserWebSocketMessageSocket)
-        assert.deepEqual(FakeBrowserWebSocket.Instances[0].constructorArgs, [Fixtures.TenantUrl])
+        assert.deepEqual(FakeBrowserWebSocket.Instances[0].constructorArgs, [Fixtures.EnvironmentUrl])
     }
     finally { scope.Restore() }
 })

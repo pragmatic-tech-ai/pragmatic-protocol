@@ -1,7 +1,7 @@
 import { RequestType, RequestType0 } from 'vscode-jsonrpc'
 import type { PragmaticAppSummaryDto, OpenPragmaticAppParams } from '../dto/wire-dtos.js'
 
-/** JSON-RPC contract for listing and binding a runtime tenant's published applications. */
+/** JSON-RPC contract for listing and binding a runtime environment's published applications. */
 export class PragmaticAppProtocol
 {
     private static readonly ListMethod = 'application/list'

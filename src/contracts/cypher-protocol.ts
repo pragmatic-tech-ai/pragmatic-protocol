@@ -10,6 +10,6 @@ export class CypherProtocol
 
     public static readonly Query = new RequestType<CypherQueryParams, CypherQueryPageDto, void>(CypherProtocol.QueryMethod)
     public static readonly Execute = new RequestType<CypherExecuteParams, CypherExecuteResultDto, void>(CypherProtocol.ExecuteMethod)
-    /** The tenant's queryable model shard ids (development tenants; model-scoped queries are not available on runtime tenants). */
+    /** The environment's queryable model shard ids (development environments; model-scoped queries are not available on runtime environments). */
     public static readonly Models = new RequestType0<CypherModelListDto, void>(CypherProtocol.ModelsMethod)
 }
