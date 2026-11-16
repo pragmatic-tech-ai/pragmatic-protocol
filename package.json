@@ -1,6 +1,10 @@
 {
   "name": "@pragmatic-tech-ai/pragmatic-protocol",
   "version": "0.13.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pragmatic-tech-ai/pragmatic-protocol.git"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,5 +32,12 @@
     "@types/ws": "^8.5.10",
     "tsx": "^4.0.0",
     "typescript": "^5.5.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }
