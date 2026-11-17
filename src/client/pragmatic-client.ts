@@ -15,6 +15,7 @@ import type { ReconnectPolicy } from './reconnect-policy.js'
 import type { INodeDialerFactory, ISocketDialer } from './i-socket-dialer.js'
 import { LanguageProtocol } from '../contracts/language-protocol.js'
 import { SolutionProtocol } from '../contracts/solution-protocol.js'
+import { StorageProtocol } from '../contracts/storage-protocol.js'
 import { ModelProtocol } from '../contracts/model-protocol.js'
 import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
@@ -30,6 +31,7 @@ import type {
     AppWriteParams, AppWriteResultDto, DataChangedPayload, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
+    SolutionSummaryDto, SelectAuthoringParams, StorageEntryDto, StorageChangedPayload,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -51,6 +53,7 @@ export interface ReconnectingOptions
 export class PragmaticClient
 {
     private static readonly NodeOnlyError = 'Node-only connect: ConnectAsync is unavailable in this entry; use ConnectReconnecting with a BrowserSocketDialer, or import the package root (@pragmatic-tech-ai/pragmatic-protocol), which installs the Node dialer; deep imports of dist/client/* are unsupported'
+    private static readonly Base64ChunkSize = 0x8000
     private static nodeDialerFactory: INodeDialerFactory | undefined
     private static readonly DefaultReconnect: ReconnectPolicy = { initialDelayMs: 500, factor: 2, maxDelayMs: 30000 }
     private static readonly DefaultReadIdleMs = 60000
@@ -321,6 +324,88 @@ export class PragmaticClient
     public ActiveSolution(): Promise<ActiveSolutionSummary | null>
     {
         return this.RequestNoParams(SolutionProtocol.ActiveSolution)
+    }
+
+    public ListSolutions(): Promise<SolutionSummaryDto[]>
+    {
+        return this.RequestNoParams(SolutionProtocol.ListSolutions)
+    }
+
+    public SelectAuthoring(params: SelectAuthoringParams): Promise<ActiveSolutionSummary>
+    {
+        return this.Request(SolutionProtocol.SelectAuthoring, params)
+    }
+
+    public async StorageReadText(path: string): Promise<string>
+    {
+        return (await this.Request(StorageProtocol.ReadText, { Path: path })).Content
+    }
+
+    public async StorageReadBytes(path: string): Promise<Uint8Array>
+    {
+        const dto = await this.Request(StorageProtocol.ReadBytes, { Path: path })
+        return PragmaticClient.FromBase64(dto.BytesBase64)
+    }
+
+    public StorageWriteText(path: string, content: string): Promise<void>
+    {
+        return this.Request(StorageProtocol.WriteText, { Path: path, Content: content })
+    }
+
+    public StorageWriteBytes(path: string, bytes: Uint8Array): Promise<void>
+    {
+        return this.Request(StorageProtocol.WriteBytes, { Path: path, BytesBase64: PragmaticClient.ToBase64(bytes) })
+    }
+
+    public StorageExists(path: string): Promise<boolean>
+    {
+        return this.Request(StorageProtocol.Exists, { Path: path })
+    }
+
+    public StorageDelete(path: string): Promise<void>
+    {
+        return this.Request(StorageProtocol.Delete, { Path: path })
+    }
+
+    public StorageCreateDirectory(path: string): Promise<void>
+    {
+        return this.Request(StorageProtocol.CreateDirectory, { Path: path })
+    }
+
+    public StorageRename(from: string, to: string): Promise<void>
+    {
+        return this.Request(StorageProtocol.Rename, { From: from, To: to })
+    }
+
+    public StorageList(path: string): Promise<StorageEntryDto[]>
+    {
+        return this.Request(StorageProtocol.List, { Path: path })
+    }
+
+    public OnStorageChanged(handler: (change: StorageChangedPayload) => void): Disposable
+    {
+        return this.Subscribe(StorageProtocol.Changed, handler)
+    }
+
+    private static ToBase64(bytes: Uint8Array): string
+    {
+        let binary = ''
+        for (let i = 0; i < bytes.length; i += PragmaticClient.Base64ChunkSize)
+        {
+            binary += String.fromCharCode(...bytes.subarray(i, i + PragmaticClient.Base64ChunkSize))
+        }
+        return btoa(binary)
+    }
+
+    private static FromBase64(text: string): Uint8Array
+    {
+        const binary = atob(text)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++)
+        {
+            bytes[i] = binary.charCodeAt(i)
+        }
+        return bytes
     }
 
     public CompletionsAt(uri: string, position: Position): Promise<CompletionItem[]>
