@@ -387,27 +387,6 @@ export class PragmaticClient
         return this.Subscribe(StorageProtocol.Changed, handler)
     }
 
-    private static ToBase64(bytes: Uint8Array): string
-    {
-        let binary = ''
-        for (let i = 0; i < bytes.length; i += PragmaticClient.Base64ChunkSize)
-        {
-            binary += String.fromCharCode(...bytes.subarray(i, i + PragmaticClient.Base64ChunkSize))
-        }
-        return btoa(binary)
-    }
-
-    private static FromBase64(text: string): Uint8Array
-    {
-        const binary = atob(text)
-        const bytes = new Uint8Array(binary.length)
-        for (let i = 0; i < binary.length; i++)
-        {
-            bytes[i] = binary.charCodeAt(i)
-        }
-        return bytes
-    }
-
     public CompletionsAt(uri: string, position: Position): Promise<CompletionItem[]>
     {
         return this.Request(LanguageProtocol.CompletionsAt, { uri, position })
@@ -697,5 +676,26 @@ export class PragmaticClient
         this.SetState(ConnectionState.Closed)
         this.connection.dispose()
         this.socket.Close()
+    }
+
+    private static ToBase64(bytes: Uint8Array): string
+    {
+        let binary = ''
+        for (let i = 0; i < bytes.length; i += PragmaticClient.Base64ChunkSize)
+        {
+            binary += String.fromCharCode(...bytes.subarray(i, i + PragmaticClient.Base64ChunkSize))
+        }
+        return btoa(binary)
+    }
+
+    private static FromBase64(text: string): Uint8Array
+    {
+        const binary = atob(text)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++)
+        {
+            bytes[i] = binary.charCodeAt(i)
+        }
+        return bytes
     }
 }

@@ -10,6 +10,8 @@ import { BuildState } from '../../dto/wire-dtos.js'
 import type { StorageChangedPayload } from '../../dto/wire-dtos.js'
 import { PragmaticClient } from '../pragmatic-client.js'
 
+const AddedChange: StorageChangedPayload = { Kind: 'added', Path: 'a.todl', IsDirectory: false }
+
 class DevelopHarness
 {
     public readonly server
@@ -107,9 +109,9 @@ test('OnStorageChanged delivers storage/changed pushes and stops after dispose',
     let wake!: () => void
     let arrived = new Promise<void>(resolve => { wake = resolve })
     const sub = h.client.OnStorageChanged(change => { received.push(change); wake() })
-    await h.server.sendNotification(StorageProtocol.Changed, { Kind: 'added', Path: 'a.todl', IsDirectory: false })
+    await h.server.sendNotification(StorageProtocol.Changed, AddedChange)
     await arrived
-    assert.deepEqual(received, [{ Kind: 'added', Path: 'a.todl', IsDirectory: false }])
+    assert.deepEqual(received, [AddedChange])
     sub.dispose()
     arrived = new Promise<void>(resolve => { wake = resolve })
     await h.server.sendNotification(StorageProtocol.Changed, { Kind: 'removed', Path: 'b', IsDirectory: false })
