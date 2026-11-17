@@ -969,6 +969,7 @@ export interface StorageWriteTextParams
 export interface StorageWriteBytesParams
 {
     Path: string
+    // base64-encoded bytes over JSON-RPC (encode on send, decode on receive)
     BytesBase64: string
 }
 
@@ -985,6 +986,7 @@ export interface StorageTextDto
 
 export interface StorageBytesDto
 {
+    // base64-encoded bytes over JSON-RPC (encode on send, decode on receive)
     BytesBase64: string
 }
 
