@@ -954,3 +954,61 @@ export interface GraphLoadedDto
     packages: { id: string; version: string }[]
     promotedAt: string
 }
+
+export interface StoragePathParams
+{
+    Path: string
+}
+
+export interface StorageWriteTextParams
+{
+    Path: string
+    Content: string
+}
+
+export interface StorageWriteBytesParams
+{
+    Path: string
+    BytesBase64: string
+}
+
+export interface StorageRenameParams
+{
+    From: string
+    To: string
+}
+
+export interface StorageTextDto
+{
+    Content: string
+}
+
+export interface StorageBytesDto
+{
+    BytesBase64: string
+}
+
+export interface StorageEntryDto
+{
+    Name: string
+    IsDirectory: boolean
+}
+
+/** Mirrors todl-runtime FileChange. */
+export interface StorageChangedPayload
+{
+    Kind: 'added' | 'removed' | 'changed'
+    Path: string
+    IsDirectory: boolean
+}
+
+export interface SolutionSummaryDto
+{
+    Name: string
+    Id: string
+}
+
+export interface SelectAuthoringParams
+{
+    SolutionId: string
+}
