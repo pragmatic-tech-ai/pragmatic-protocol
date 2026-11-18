@@ -21,6 +21,7 @@ import { ConnectorProtocol } from '../contracts/connector-protocol.js'
 import { CypherProtocol } from '../contracts/cypher-protocol.js'
 import { PragmaticAppProtocol } from '../contracts/pragmatic-app-protocol.js'
 import { ApplicationDeployProtocol } from '../contracts/pragmatic-app-deploy-protocol.js'
+import { RunTestProtocol } from '../contracts/run-test-protocol.js'
 import { GraphProtocol } from '../contracts/graph-protocol.js'
 import { AppDataProtocol } from '../contracts/app-data-protocol.js'
 import { DataSharingProtocol } from '../contracts/data-sharing-protocol.js'
@@ -502,6 +503,12 @@ export class PragmaticClient
     public DeployApplication(params: CypherAppDeployParamsDto): Promise<AppDeployResultDto>
     {
         return this.Request(ApplicationDeployProtocol.Deploy, params)
+    }
+
+    /** Loads a build into the environment's own co-located run/test runtime (runtime/run-test); distinct from DeployApplication. */
+    public LoadRunTest(params: CypherAppDeployParamsDto): Promise<AppDeployResultDto>
+    {
+        return this.Request(RunTestProtocol.Load, params)
     }
 
     public CreateGraph(params: GraphCreateParamsDto): Promise<GraphSummaryDto>
