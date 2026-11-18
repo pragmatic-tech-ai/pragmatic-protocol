@@ -129,7 +129,7 @@ export interface ModelMemberDto
     isClass: boolean
     attrs: Record<string, string | number | boolean | null>
     edges: ModelEdgeDto[]
-    // The node fields below are optional: the runtime view has no class/schema structure and omits them (absent = none).
+    // The node fields below are optional: the runtime view has no class/schema structure and omits them (absent = none); the dev model view instead emits explicit null for class/canonicalId/storageId and an empty [] for fields (and populates originOf).
     class?: string | null
     canonicalId?: string | null
     storageId?: string | null
