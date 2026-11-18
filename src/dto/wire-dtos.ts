@@ -129,11 +129,43 @@ export interface ModelMemberDto
     isClass: boolean
     attrs: Record<string, string | number | boolean | null>
     edges: ModelEdgeDto[]
+    // The node fields below are optional: the runtime view has no class/schema structure and omits them (absent = none); the dev model view instead emits explicit null for class/canonicalId/storageId and an empty [] for fields (and populates originOf).
+    class?: string | null
+    canonicalId?: string | null
+    storageId?: string | null
+    fields?: FieldDeclDto[]
+}
+
+// A declared field of a concept/annotation node; cardinality is the engine Cardinality enum member name.
+export interface FieldDeclDto
+{
+    name: string
+    type: string
+    cardinality: string
+    secured?: boolean
+}
+
+// Where a node's declaring artifact lives: an open project (by solution member id) or a published package.
+export interface WikiOriginDto
+{
+    kind: string
+    memberId?: string
+    id?: string
+    version?: string
+}
+
+// The WikiOriginDto.kind values (the engine WikiOriginKind values).
+export class WikiOriginWire
+{
+    public static readonly OpenProject = 'openProject'
+    public static readonly Package = 'package'
 }
 
 export interface ModelViewPageDto extends Page<ModelMemberDto>
 {
     provenanceOf: Record<string, string>
+    // The origin of each page member (absent for the runtime view and for a member with no known origin).
+    originOf?: Record<string, WikiOriginDto>
 }
 
 export interface ResolvedResourceDto
