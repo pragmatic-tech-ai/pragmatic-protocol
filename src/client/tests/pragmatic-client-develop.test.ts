@@ -101,6 +101,22 @@ test('ListSolutions and SelectAuthoring map to the solution requests', async () 
     await h.Dispose()
 })
 
+test('CreateSolution sends solution/create with the name and returns the result', async () =>
+{
+    const h = new DevelopHarness()
+    let received: unknown
+    h.server.onRequest(SolutionProtocol.CreateSolution, params =>
+    {
+        received = params
+        return { Name: 'Up', Created: true }
+    })
+    h.server.listen()
+    const result = await h.client.CreateSolution({ Name: 'Up' })
+    assert.deepEqual(received, { Name: 'Up' })
+    assert.deepEqual(result, { Name: 'Up', Created: true })
+    await h.Dispose()
+})
+
 test('OnStorageChanged delivers storage/changed pushes and stops after dispose', async () =>
 {
     const h = new DevelopHarness()
