@@ -1014,3 +1014,14 @@ export interface SelectAuthoringParams
 {
     SolutionId: string
 }
+
+export interface SolutionCreateParamsDto
+{
+    Name: string
+}
+
+export interface SolutionCreateResultDto
+{
+    Name: string
+    Created: boolean
+}

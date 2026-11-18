@@ -22,3 +22,8 @@ test('solution protocol registers list + selectAuthoring', () =>
     assert.equal(SolutionProtocol.ListSolutions.method, 'solution/list')
     assert.equal(SolutionProtocol.SelectAuthoring.method, 'solution/selectAuthoring')
 })
+
+test('solution protocol registers create', () =>
+{
+    assert.equal(SolutionProtocol.CreateSolution.method, 'solution/create')
+})

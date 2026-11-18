@@ -31,7 +31,7 @@ import type {
     AppWriteParams, AppWriteResultDto, DataChangedPayload, ShareParams, ShareResultDto, UnshareParams, UnshareResultDto, ListSharesParams, ListSharesResultDto,
     AssignParams, AssignResultDto, BuildStateChangedPayload, PageParams, CypherAppDeployParamsDto, AppDeployResultDto,
     GraphCreateParamsDto, GraphContributeParamsDto, GraphRefParamsDto, GraphSummaryDto, GraphDetailDto, GraphExportDto, GraphLoadParamsDto, GraphLoadedDto,
-    SolutionSummaryDto, SelectAuthoringParams, StorageEntryDto, StorageChangedPayload,
+    SolutionSummaryDto, SelectAuthoringParams, SolutionCreateParamsDto, SolutionCreateResultDto, StorageEntryDto, StorageChangedPayload,
 } from '../dto/wire-dtos.js'
 
 interface Subscription<P>
@@ -334,6 +334,11 @@ export class PragmaticClient
     public SelectAuthoring(params: SelectAuthoringParams): Promise<ActiveSolutionSummary>
     {
         return this.Request(SolutionProtocol.SelectAuthoring, params)
+    }
+
+    public CreateSolution(params: SolutionCreateParamsDto): Promise<SolutionCreateResultDto>
+    {
+        return this.Request(SolutionProtocol.CreateSolution, params)
     }
 
     public async StorageReadText(path: string): Promise<string>
